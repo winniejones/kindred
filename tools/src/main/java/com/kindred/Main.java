@@ -1,4 +1,4 @@
-package se.wjss.game;
+package com.kindred;
 
 public class Main {
     public static void main(String[] args) {

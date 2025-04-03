@@ -1,7 +1,7 @@
-package se.wjss.game;
+package com.kindred;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("Hello engine!");
+        System.out.println("Hello networking!");
     }
 }

@@ -1,5 +1,5 @@
 allprojects {
-    group = 'se.wjss.game'
+    group = 'com.kindred'
     version = '0.1.0'
 
     repositories {
