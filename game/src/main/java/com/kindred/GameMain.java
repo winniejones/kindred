@@ -1,5 +1,9 @@
 package com.kindred;
 
+import com.kindred.engine.entity.EntityManager;
+import com.kindred.engine.entity.MovementSystem;
+import com.kindred.engine.entity.PositionComponent;
+import com.kindred.engine.entity.VelocityComponent;
 import com.kindred.engine.input.Keyboard;
 import com.kindred.engine.render.Screen;
 
@@ -8,9 +12,8 @@ import java.awt.*;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.util.Random;
 
-public class Main extends Canvas implements Runnable {
+public class GameMain extends Canvas implements Runnable {
 
     private JFrame frame;
     private Thread gameThread;
@@ -27,7 +30,11 @@ public class Main extends Canvas implements Runnable {
     private final Screen screen;
     private final Keyboard keyboard;
 
-    public Main() {
+    private EntityManager entityManager;
+    private MovementSystem movementSystem;
+    private int playerEntity;
+
+    public GameMain() {
         setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
         setFocusable(true);
         requestFocus();
@@ -39,15 +46,14 @@ public class Main extends Canvas implements Runnable {
         keyboard = new Keyboard();
 
         addKeyListener(keyboard);
-    }
 
-    private String generateName() {
-        Random rand = new Random();
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 10; i++) {
-            sb.append((char) (97 + rand.nextInt(26)));
-        }
-        return sb.toString();
+        entityManager = new EntityManager();
+        movementSystem = new MovementSystem(entityManager);
+
+        // Create player entity with position and velocity
+        playerEntity = entityManager.createEntity();
+        entityManager.addComponent(playerEntity, new PositionComponent(100, 100));
+        entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
     }
 
     public synchronized void start() {
@@ -56,7 +62,6 @@ public class Main extends Canvas implements Runnable {
         gameThread = new Thread(this);
         gameThread.start();
     }
-
     public synchronized void stop() {
         running = false;
         try {
@@ -65,7 +70,6 @@ public class Main extends Canvas implements Runnable {
             e.printStackTrace();
         }
     }
-
     @Override
     public void run() {
         long lastTime = System.nanoTime();
@@ -99,6 +103,16 @@ public class Main extends Canvas implements Runnable {
 
     private void update() {
         keyboard.update();
+        VelocityComponent vel = entityManager.getComponent(playerEntity, VelocityComponent.class);
+
+        vel.vx = 0;
+        vel.vy = 0;
+        if (keyboard.up) vel.vy = -4;
+        if (keyboard.down) vel.vy = 4;
+        if (keyboard.left) vel.vx = -4;
+        if (keyboard.right) vel.vx = 4;
+
+        movementSystem.update();
     }
 
     private void render() {
@@ -109,7 +123,9 @@ public class Main extends Canvas implements Runnable {
         }
 
         screen.clear();
-        screen.fillRect(100, 100, 64, 64, 0xff00ff00, false); // green rectangle
+
+        PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
+        screen.fillRect(pos.x, pos.y, 64, 64, 0xff00ff00, false); // green rectangle
 
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
 
@@ -120,7 +136,7 @@ public class Main extends Canvas implements Runnable {
     }
 
     public static void main(String[] args) {
-        Main game = new Main();
+        GameMain game = new GameMain();
         game.frame = new JFrame(TITLE);
         game.frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         game.frame.setResizable(false);
