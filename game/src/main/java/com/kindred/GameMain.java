@@ -73,6 +73,7 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
         entityManager.addComponent(playerEntity, new SpriteComponent(walkFrames[0][0]));
         entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 5));
+        entityManager.addComponent(playerEntity, new PlayerComponent());
 
         return entity;
     }
