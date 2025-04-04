@@ -89,6 +89,39 @@ public class Screen {
             }
         }
     }
+    public void drawSpriteWithAlpha(int xp, int yp, BufferedImage sprite) {
+        int spriteWidth = sprite.getWidth();
+        int spriteHeight = sprite.getHeight();
+        for (int y = 0; y < spriteHeight; y++) {
+            int ya = y + yp;
+            if (ya < 0 || ya >= height) continue;
+            for (int x = 0; x < spriteWidth; x++) {
+                int xa = x + xp;
+                if (xa < 0 || xa >= width) continue;
+                int col = sprite.getRGB(x, y);
+                if (col != ALPHA_COL) {
+                    pixels[xa + ya * width] = col;
+                }
+            }
+        }
+    }
+    public void drawSpriteWithColorKey(int xp, int yp, BufferedImage sprite, int colorKey) {
+        int spriteWidth = sprite.getWidth();
+        int spriteHeight = sprite.getHeight();
+        for (int y = 0; y < spriteHeight; y++) {
+            int ya = y + yp;
+            if (ya < 0 || ya >= height) continue;
+            for (int x = 0; x < spriteWidth; x++) {
+                int xa = x + xp;
+                if (xa < 0 || xa >= width) continue;
+                int col = sprite.getRGB(x, y);
+                if (col != colorKey) {
+                    pixels[xa + ya * width] = col;
+                }
+            }
+        }
+    }
+
 
     // These should eventually be broken out into a separate Renderer class if complexity grows.
 }

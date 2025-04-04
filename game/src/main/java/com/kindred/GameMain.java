@@ -30,6 +30,7 @@ public class GameMain extends Canvas implements Runnable {
 
     private EntityManager entityManager;
     private MovementSystem movementSystem;
+    private AnimationSystem animationSystem;
     private int playerEntity;
 
     public GameMain() {
@@ -47,6 +48,7 @@ public class GameMain extends Canvas implements Runnable {
 
         entityManager = new EntityManager();
         movementSystem = new MovementSystem(entityManager);
+        animationSystem = new AnimationSystem(entityManager);
 
         // Create player entity with position and velocity
         playerEntity = createPlayer();
@@ -67,7 +69,7 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(playerEntity, new PositionComponent(100, 100));
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
         entityManager.addComponent(playerEntity, new SpriteComponent(walkFrames[0][0]));
-        entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 10));
+        entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 5));
 
         return entity;
     }
@@ -78,6 +80,7 @@ public class GameMain extends Canvas implements Runnable {
         gameThread = new Thread(this);
         gameThread.start();
     }
+
     public synchronized void stop() {
         running = false;
         try {
@@ -86,6 +89,7 @@ public class GameMain extends Canvas implements Runnable {
             e.printStackTrace();
         }
     }
+
     @Override
     public void run() {
         long lastTime = System.nanoTime();
@@ -120,29 +124,17 @@ public class GameMain extends Canvas implements Runnable {
     private void update() {
         keyboard.update();
         VelocityComponent vel = entityManager.getComponent(playerEntity, VelocityComponent.class);
-        AnimationComponent anim = entityManager.getComponent(playerEntity, AnimationComponent.class);
-        SpriteComponent sprite = entityManager.getComponent(playerEntity, SpriteComponent.class);
 
         vel.vx = 0;
         vel.vy = 0;
-        int direction = anim.direction; // Preserve previous direction
-        boolean moving = false;
 
-        if (keyboard.up) { vel.vy = -4; direction = 2; moving = true ;}
-        if (keyboard.down) { vel.vy = 4; direction = 1;  moving = true ;}
-        if (keyboard.left) { vel.vx = -4; direction = 0;  moving = true ;}
-        if (keyboard.right) { vel.vx = 4; direction = 3;  moving = true ;}
-
-        anim.setDirection(direction);
-        if (moving) {
-            anim.update(); // only cycle frames when moving
-        } else {
-            anim.frame = 0; // reset to idle frame
-            anim.tick = 0;
-        }
-        sprite.sprite = anim.getCurrentFrame();
+        if (keyboard.up) vel.vy = -2;
+        if (keyboard.down) vel.vy = 2;
+        if (keyboard.left) vel.vx = -2;
+        if (keyboard.right) vel.vx = 2;
 
         movementSystem.update();
+        animationSystem.update();
     }
 
     private void render() {
@@ -157,7 +149,7 @@ public class GameMain extends Canvas implements Runnable {
         //screen.fillRect(pos.x, pos.y, 64, 64, 0xff00ff00, false); // green rectangle
         PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
         SpriteComponent sprite = entityManager.getComponent(playerEntity, SpriteComponent.class);
-        screen.drawSprite(pos.x, pos.y, sprite.sprite);
+        screen.drawSpriteWithColorKey(pos.x, pos.y, sprite.sprite, 0xffff00ff);
 
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
 
