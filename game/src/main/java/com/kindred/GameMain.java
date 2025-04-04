@@ -4,8 +4,10 @@ import com.kindred.engine.entity.EntityManager;
 import com.kindred.engine.entity.MovementSystem;
 import com.kindred.engine.entity.PositionComponent;
 import com.kindred.engine.entity.VelocityComponent;
+import com.kindred.engine.entity.SpriteComponent;
 import com.kindred.engine.input.Keyboard;
 import com.kindred.engine.render.Screen;
+import com.kindred.engine.resource.AssetLoader;
 
 import javax.swing.*;
 import java.awt.*;
@@ -51,9 +53,20 @@ public class GameMain extends Canvas implements Runnable {
         movementSystem = new MovementSystem(entityManager);
 
         // Create player entity with position and velocity
-        playerEntity = entityManager.createEntity();
+        playerEntity = createPlayer();
+    }
+
+    private int createPlayer() {
+        BufferedImage sheet = AssetLoader.loadImage("/assets/sprites/player.png");
+
+        // Example: down-facing, standing still (first row, first column)
+        BufferedImage playerSprite = AssetLoader.getSprite(sheet, 1, 0, 32);
+        int entity = entityManager.createEntity();
         entityManager.addComponent(playerEntity, new PositionComponent(100, 100));
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
+        entityManager.addComponent(playerEntity, new SpriteComponent(playerSprite));
+
+        return entity;
     }
 
     public synchronized void start() {
@@ -125,7 +138,9 @@ public class GameMain extends Canvas implements Runnable {
         screen.clear();
 
         PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
-        screen.fillRect(pos.x, pos.y, 64, 64, 0xff00ff00, false); // green rectangle
+        //screen.fillRect(pos.x, pos.y, 64, 64, 0xff00ff00, false); // green rectangle
+        SpriteComponent sprite = entityManager.getComponent(playerEntity, SpriteComponent.class);
+        screen.drawSprite(pos.x, pos.y, sprite.sprite);
 
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
 

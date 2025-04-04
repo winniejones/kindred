@@ -1,5 +1,6 @@
 package com.kindred.engine.render;
 
+import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -69,6 +70,22 @@ public class Screen {
                 if (xo < 0 || xo >= this.width)
                     continue;
                 pixels[xo + yo * this.width] = color;
+            }
+        }
+    }
+
+    public void drawSprite(int xp, int yp, BufferedImage sprite) {
+        int spriteWidth = sprite.getWidth();
+        int spriteHeight = sprite.getHeight();
+        for (int y = 0; y < spriteHeight; y++) {
+            int ya = y + yp;
+            if (ya < 0 || ya >= height) continue;
+            for (int x = 0; x < spriteWidth; x++) {
+                int xa = x + xp;
+                if (xa < 0 || xa >= width) continue;
+                int col = sprite.getRGB(x, y);
+                if ((col >> 24) == 0) continue; // skip transparent pixels
+                pixels[xa + ya * width] = col;
             }
         }
     }
