@@ -41,4 +41,11 @@ public class EntityManager {
         }
         return result;
     }
+
+    public Integer getFirstEntityWith(Class<? extends Component>... requiredComponents) {
+        for (int entity : getEntitiesWith(requiredComponents)) {
+            return entity;
+        }
+        return null;
+    }
 }

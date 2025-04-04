@@ -8,8 +8,8 @@ public class CameraSystem {
     private final Screen screen;
 
     /*
-    * Test
-    * */
+     * Test
+     * */
     private final int tileSize = 32;
     private final int mapWidth = 50;
     private final int mapHeight = 30;
@@ -20,29 +20,28 @@ public class CameraSystem {
     }
 
     public void update() {
-        for (int cameraEntity : entityManager.getEntitiesWith(CameraComponent.class)) {
-            CameraComponent camera = entityManager.getComponent(cameraEntity, CameraComponent.class);
+        Integer cameraEntity = entityManager.getFirstEntityWith(CameraComponent.class);
+        Integer playerEntity = entityManager.getFirstEntityWith(PlayerComponent.class, PositionComponent.class);
 
-            // Find player
-            for (int playerEntity : entityManager.getEntitiesWith(PlayerComponent.class, PositionComponent.class)) {
-                PositionComponent playerPos = entityManager.getComponent(playerEntity, PositionComponent.class);
+        if (cameraEntity == null || playerEntity == null) return;
+        
+        CameraComponent camera = entityManager.getComponent(cameraEntity, CameraComponent.class);
+        PositionComponent playerPos = entityManager.getComponent(playerEntity, PositionComponent.class);
 
-                int camX = playerPos.x - screen.width / 2;
-                int camY = playerPos.y - screen.height / 2;
+        int camX = playerPos.x - screen.width / 2;
+        int camY = playerPos.y - screen.height / 2;
 
-                // Clamp to map bounds
-                camX = Math.max(0, Math.min(camX, tileSize * mapWidth - screen.width));
-                camY = Math.max(0, Math.min(camY, tileSize * mapHeight - screen.height));
+        // Clamp to map bounds
+        camX = Math.max(0, Math.min(camX, tileSize * mapWidth - screen.width));
+        camY = Math.max(0, Math.min(camY, tileSize * mapHeight - screen.height));
 
-                camera.x = camX;
-                camera.y = camY;
+        camera.x = camX;
+        camera.y = camY;
 
-                screen.setOffset(camera.x, camera.y);
+        screen.setOffset(camera.x, camera.y);
 
-                System.out.println("Camera: (" + camX + ", " + camY + ")");
-                System.out.println("Player: (" + playerPos.x + ", " + playerPos.y + ")");
-                return; // assume only one camera and one player
-            }
-        }
+        System.out.println("Camera: (" + camX + ", " + camY + ")");
+        System.out.println("Player: (" + playerPos.x + ", " + playerPos.y + ")");
+        return; // assume only one camera and one player
     }
 }
