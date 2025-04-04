@@ -31,6 +31,8 @@ public class GameMain extends Canvas implements Runnable {
     private EntityManager entityManager;
     private MovementSystem movementSystem;
     private AnimationSystem animationSystem;
+
+    private RenderSystem renderSystem;
     private int playerEntity;
 
     public GameMain() {
@@ -49,6 +51,7 @@ public class GameMain extends Canvas implements Runnable {
         entityManager = new EntityManager();
         movementSystem = new MovementSystem(entityManager);
         animationSystem = new AnimationSystem(entityManager);
+        renderSystem = new RenderSystem(entityManager, screen);
 
         // Create player entity with position and velocity
         playerEntity = createPlayer();
@@ -146,10 +149,7 @@ public class GameMain extends Canvas implements Runnable {
 
         screen.clear();
 
-        //screen.fillRect(pos.x, pos.y, 64, 64, 0xff00ff00, false); // green rectangle
-        PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
-        SpriteComponent sprite = entityManager.getComponent(playerEntity, SpriteComponent.class);
-        screen.drawSpriteWithColorKey(pos.x, pos.y, sprite.sprite, 0xffff00ff);
+        renderSystem.render();
 
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
 
