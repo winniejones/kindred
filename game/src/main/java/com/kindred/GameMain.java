@@ -126,13 +126,20 @@ public class GameMain extends Canvas implements Runnable {
         vel.vx = 0;
         vel.vy = 0;
         int direction = anim.direction; // Preserve previous direction
-        if (keyboard.up) { vel.vy = -4; direction = 2; }
-        if (keyboard.down) { vel.vy = 4; direction = 1; }
-        if (keyboard.left) { vel.vx = -4; direction = 0; }
-        if (keyboard.right) { vel.vx = 4; direction = 3; }
+        boolean moving = false;
+
+        if (keyboard.up) { vel.vy = -4; direction = 2; moving = true ;}
+        if (keyboard.down) { vel.vy = 4; direction = 1;  moving = true ;}
+        if (keyboard.left) { vel.vx = -4; direction = 0;  moving = true ;}
+        if (keyboard.right) { vel.vx = 4; direction = 3;  moving = true ;}
 
         anim.setDirection(direction);
-        anim.update();
+        if (moving) {
+            anim.update(); // only cycle frames when moving
+        } else {
+            anim.frame = 0; // reset to idle frame
+            anim.tick = 0;
+        }
         sprite.sprite = anim.getCurrentFrame();
 
         movementSystem.update();
