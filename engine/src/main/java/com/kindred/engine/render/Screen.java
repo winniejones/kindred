@@ -74,6 +74,14 @@ public class Screen {
         }
     }
 
+    public void drawBackground(int tileSize, int worldWidth, int worldHeight) {
+        for (int y = 0; y < worldHeight; y++) {
+            for (int x = 0; x < worldWidth; x++) {
+                fillRect(x * tileSize, y * tileSize, tileSize, tileSize, 0x222222, true); // Use camera offset
+            }
+        }
+    }
+
     public void drawSprite(int xp, int yp, BufferedImage sprite) {
         int spriteWidth = sprite.getWidth();
         int spriteHeight = sprite.getHeight();
@@ -90,12 +98,12 @@ public class Screen {
         }
     }
     public void drawSpriteWithAlpha(int xp, int yp, BufferedImage sprite) {
-        int spriteWidth = sprite.getWidth();
-        int spriteHeight = sprite.getHeight();
-        for (int y = 0; y < spriteHeight; y++) {
+        xp -= xOffset;
+        yp -= yOffset;
+        for (int y = 0; y < sprite.getHeight(); y++) {
             int ya = y + yp;
             if (ya < 0 || ya >= height) continue;
-            for (int x = 0; x < spriteWidth; x++) {
+            for (int x = 0; x < sprite.getWidth(); x++) {
                 int xa = x + xp;
                 if (xa < 0 || xa >= width) continue;
                 int col = sprite.getRGB(x, y);
@@ -106,12 +114,12 @@ public class Screen {
         }
     }
     public void drawSpriteWithColorKey(int xp, int yp, BufferedImage sprite, int colorKey) {
-        int spriteWidth = sprite.getWidth();
-        int spriteHeight = sprite.getHeight();
-        for (int y = 0; y < spriteHeight; y++) {
+        xp -= xOffset;
+        yp -= yOffset;
+        for (int y = 0; y < sprite.getHeight(); y++) {
             int ya = y + yp;
             if (ya < 0 || ya >= height) continue;
-            for (int x = 0; x < spriteWidth; x++) {
+            for (int x = 0; x < sprite.getWidth(); x++) {
                 int xa = x + xp;
                 if (xa < 0 || xa >= width) continue;
                 int col = sprite.getRGB(x, y);

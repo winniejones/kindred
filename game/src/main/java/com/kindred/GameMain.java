@@ -33,7 +33,16 @@ public class GameMain extends Canvas implements Runnable {
     private AnimationSystem animationSystem;
 
     private RenderSystem renderSystem;
+    private CameraSystem cameraSystem;
+
     private int playerEntity;
+    private int cameraEntity;
+
+    private final int TILE_SIZE = 32;
+    private final int MAP_WIDTH = 50;
+    private final int MAP_HEIGHT = 30;
+
+    private int[][] tileMap;
 
     public GameMain() {
         setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
@@ -52,9 +61,29 @@ public class GameMain extends Canvas implements Runnable {
         movementSystem = new MovementSystem(entityManager);
         animationSystem = new AnimationSystem(entityManager);
         renderSystem = new RenderSystem(entityManager, screen);
+        cameraSystem = new CameraSystem(entityManager, screen);
 
         // Create player entity with position and velocity
         playerEntity = createPlayer();
+        cameraEntity = createCamera();
+        generateTilemap();
+    }
+
+    private void generateTilemap() {
+        tileMap = new int[MAP_HEIGHT][MAP_WIDTH];
+        for (int y = 0; y < MAP_HEIGHT; y++) {
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                tileMap[y][x] = (x + y) % 2 == 0 ? 0x333333 : 0x444444;
+            }
+        }
+    }
+
+    private void drawTilemap() {
+        for (int y = 0; y < MAP_HEIGHT; y++) {
+            for (int x = 0; x < MAP_WIDTH; x++) {
+                screen.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, tileMap[y][x], true);
+            }
+        }
     }
 
     private int createPlayer() {
@@ -76,6 +105,11 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(playerEntity, new PlayerComponent());
 
         return entity;
+    }
+    private int createCamera() {
+        cameraEntity = entityManager.createEntity();
+        entityManager.addComponent(cameraEntity, new CameraComponent(0, 0));
+        return cameraEntity;
     }
 
     public synchronized void start() {
@@ -138,6 +172,7 @@ public class GameMain extends Canvas implements Runnable {
         if (keyboard.right) vel.vx = 2;
 
         movementSystem.update();
+        cameraSystem.update();
         animationSystem.update();
     }
 
@@ -150,6 +185,7 @@ public class GameMain extends Canvas implements Runnable {
 
         screen.clear();
 
+        drawTilemap();
         renderSystem.render();
 
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
