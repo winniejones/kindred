@@ -2,6 +2,7 @@ package com.kindred;
 
 import com.kindred.engine.entity.*;
 import com.kindred.engine.input.Keyboard;
+import com.kindred.engine.level.Level;
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
 
@@ -44,6 +45,7 @@ public class GameMain extends Canvas implements Runnable {
 
     private int[][] tileMap;
 
+    private Level level;
     public GameMain() {
         setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
         setFocusable(true);
@@ -66,24 +68,10 @@ public class GameMain extends Canvas implements Runnable {
         // Create player entity with position and velocity
         playerEntity = createPlayer();
         cameraEntity = createCamera();
-        generateTilemap();
-    }
 
-    private void generateTilemap() {
-        tileMap = new int[MAP_HEIGHT][MAP_WIDTH];
-        for (int y = 0; y < MAP_HEIGHT; y++) {
-            for (int x = 0; x < MAP_WIDTH; x++) {
-                tileMap[y][x] = (x + y) % 2 == 0 ? 0x333333 : 0x444444;
-            }
-        }
-    }
-
-    private void drawTilemap() {
-        for (int y = 0; y < MAP_HEIGHT; y++) {
-            for (int x = 0; x < MAP_WIDTH; x++) {
-                screen.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, tileMap[y][x], true);
-            }
-        }
+        // Create level
+        level = new Level(50, 30, 32);
+        level.generateTestMap();
     }
 
     private int createPlayer() {
@@ -185,7 +173,7 @@ public class GameMain extends Canvas implements Runnable {
 
         screen.clear();
 
-        drawTilemap();
+        level.render(screen);
         renderSystem.render();
 
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);

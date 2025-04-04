@@ -24,7 +24,7 @@ public class CameraSystem {
         Integer playerEntity = entityManager.getFirstEntityWith(PlayerComponent.class, PositionComponent.class);
 
         if (cameraEntity == null || playerEntity == null) return;
-        
+
         CameraComponent camera = entityManager.getComponent(cameraEntity, CameraComponent.class);
         PositionComponent playerPos = entityManager.getComponent(playerEntity, PositionComponent.class);
 
