@@ -1,10 +1,6 @@
 package com.kindred;
 
-import com.kindred.engine.entity.EntityManager;
-import com.kindred.engine.entity.MovementSystem;
-import com.kindred.engine.entity.PositionComponent;
-import com.kindred.engine.entity.VelocityComponent;
-import com.kindred.engine.entity.SpriteComponent;
+import com.kindred.engine.entity.*;
 import com.kindred.engine.input.Keyboard;
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
@@ -58,13 +54,20 @@ public class GameMain extends Canvas implements Runnable {
 
     private int createPlayer() {
         BufferedImage sheet = AssetLoader.loadImage("/assets/sprites/player.png");
+        BufferedImage[][] walkFrames = new BufferedImage[4][3]; // 4 directions, 3 frames each
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 4; col++) {
+                walkFrames[col][row] = AssetLoader.getSprite(sheet, col, row, 32);
+            }
+        }
 
         // Example: down-facing, standing still (first row, first column)
-        BufferedImage playerSprite = AssetLoader.getSprite(sheet, 1, 0, 32);
+        //BufferedImage playerSprite = AssetLoader.getSprite(sheet, 1, 0, 32);
         int entity = entityManager.createEntity();
         entityManager.addComponent(playerEntity, new PositionComponent(100, 100));
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
-        entityManager.addComponent(playerEntity, new SpriteComponent(playerSprite));
+        entityManager.addComponent(playerEntity, new SpriteComponent(walkFrames[0][0]));
+        entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 10));
 
         return entity;
     }
@@ -117,13 +120,20 @@ public class GameMain extends Canvas implements Runnable {
     private void update() {
         keyboard.update();
         VelocityComponent vel = entityManager.getComponent(playerEntity, VelocityComponent.class);
+        AnimationComponent anim = entityManager.getComponent(playerEntity, AnimationComponent.class);
+        SpriteComponent sprite = entityManager.getComponent(playerEntity, SpriteComponent.class);
 
         vel.vx = 0;
         vel.vy = 0;
-        if (keyboard.up) vel.vy = -4;
-        if (keyboard.down) vel.vy = 4;
-        if (keyboard.left) vel.vx = -4;
-        if (keyboard.right) vel.vx = 4;
+        int direction = anim.direction; // Preserve previous direction
+        if (keyboard.up) { vel.vy = -4; direction = 2; }
+        if (keyboard.down) { vel.vy = 4; direction = 1; }
+        if (keyboard.left) { vel.vx = -4; direction = 0; }
+        if (keyboard.right) { vel.vx = 4; direction = 3; }
+
+        anim.setDirection(direction);
+        anim.update();
+        sprite.sprite = anim.getCurrentFrame();
 
         movementSystem.update();
     }
@@ -137,8 +147,8 @@ public class GameMain extends Canvas implements Runnable {
 
         screen.clear();
 
-        PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
         //screen.fillRect(pos.x, pos.y, 64, 64, 0xff00ff00, false); // green rectangle
+        PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
         SpriteComponent sprite = entityManager.getComponent(playerEntity, SpriteComponent.class);
         screen.drawSprite(pos.x, pos.y, sprite.sprite);
 
