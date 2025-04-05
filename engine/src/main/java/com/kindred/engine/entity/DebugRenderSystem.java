@@ -19,9 +19,11 @@ public class DebugRenderSystem {
         for (int entity : entityManager.getEntitiesWith(PositionComponent.class, ColliderComponent.class)) {
             PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
             ColliderComponent col = entityManager.getComponent(entity, ColliderComponent.class);
+            int hitboxX = col.getHitboxX(pos); // pos.x + col.offsetX
+            int hitboxY = col.getHitboxY(pos); // pos.y + col.offsetY
 
             if (pos != null && col != null) {
-                screen.drawRect(pos.x, pos.y, col.hitboxWidth, col.hitboxHeight, 0xFFFF00, true);
+                screen.drawRect(hitboxX, hitboxY, col.hitboxWidth, col.hitboxHeight, 0xFFFF00, true);
                 screen.fillRect(pos.x - 1, pos.y - 1, 3, 3, 0xFF0000, true);
             }
         }

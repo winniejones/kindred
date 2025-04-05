@@ -53,22 +53,18 @@ public class CollisionSystem {
             int finalVx = currentVx;
             int finalVy = currentVy;
 
+            // --- Calculate current hitbox top-left position using offsets ---
+            // Use the helper methods from ColliderComponent for clarity
+            int hitboxX = col.getHitboxX(pos); // pos.x + col.offsetX
+            int hitboxY = col.getHitboxY(pos); // pos.y + col.offsetY
+
             // --- Horizontal Collision Check ---
             if (currentVx != 0) { // Only check if trying to move horizontally
                 // Check collision using the entity's specific hitbox dimensions
-                if (isColliding(pos.x, pos.y, currentVx, 0, col.hitboxWidth, col.hitboxHeight, tileSize)) {
+                if (isColliding(hitboxX, hitboxY, currentVx, 0, col.hitboxWidth, col.hitboxHeight, tileSize)) {
                     // System.out.println("Entity " + entity + ": Collision X Detected!"); // Debug
                     finalVx = 0; // Collision detected, stop horizontal movement
 
-                    // Optional TODO: Implement sliding by adjusting position slightly here
-                    // Example: Move flush against the wall instead of just stopping.
-                    // Requires calculating the exact tile boundary hit.
-                    // E.g., if moving right (currentVx > 0):
-                    // int tileX = (pos.x + currentVx + col.hitboxWidth -1) / tileSize;
-                    // pos.x = tileX * tileSize - col.hitboxWidth; // Snap left edge to tile right edge
-                    // else if moving left (currentVx < 0):
-                    // int tileX = (pos.x + currentVx) / tileSize;
-                    // pos.x = (tileX + 1) * tileSize; // Snap right edge to tile left edge
                 }
             }
 
@@ -77,11 +73,9 @@ public class CollisionSystem {
             // especially if sliding logic were added above which might modify pos.x.
             if (currentVy != 0) { // Only check if trying to move vertically
                 // Check collision using the entity's specific hitbox dimensions
-                if (isColliding(pos.x, pos.y, 0, currentVy, col.hitboxWidth, col.hitboxHeight, tileSize)) {
+                if (isColliding(hitboxX, hitboxY, 0, currentVy, col.hitboxWidth, col.hitboxHeight, tileSize)) {
                     // System.out.println("Entity " + entity + ": Collision Y Detected!"); // Debug
                     finalVy = 0; // Collision detected, stop vertical movement
-
-                    // Optional TODO: Implement sliding for Y-axis
                 }
             }
 
