@@ -29,18 +29,19 @@ public class GameMain extends Canvas implements Runnable {
     private final Screen screen;
     private final Keyboard keyboard;
 
-    private EntityManager entityManager;
-    private MovementSystem movementSystem;
-    private AnimationSystem animationSystem;
+    private final EntityManager entityManager;
+    private final MovementSystem movementSystem;
+    private final AnimationSystem animationSystem;
 
-    private RenderSystem renderSystem;
-    private CameraSystem cameraSystem;
-    private CollisionSystem collisionSystem;
+    private final RenderSystem renderSystem;
+    private final CameraSystem cameraSystem;
+    private final CollisionSystem collisionSystem;
+    private final PlayerInputSystem playerInputSystem;
 
-    private int playerEntity;
+    private final int playerEntity;
     private int cameraEntity;
 
-    private Level level;
+    private final Level level;
 
     public GameMain() {
         setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
@@ -65,6 +66,7 @@ public class GameMain extends Canvas implements Runnable {
         renderSystem = new RenderSystem(entityManager, screen);
         cameraSystem = new CameraSystem(entityManager, screen);
         collisionSystem = new CollisionSystem(entityManager, level);
+        playerInputSystem = new PlayerInputSystem(entityManager, keyboard);
 
         // Create player entity with position and velocity
         playerEntity = createPlayer();
@@ -189,25 +191,11 @@ public class GameMain extends Canvas implements Runnable {
 
     private void update() {
         keyboard.update();
-        VelocityComponent vel = entityManager.getComponent(playerEntity, VelocityComponent.class);
 
-        if (vel == null) {
-            System.err.println("Player entity missing Velocity component!");
-            return; // Can't proceed
-        }
-
-        // Calculate desired velocity based on input for THIS FRAME
-        // Set desired velocity directly into the component based on input
-        vel.vx = 0; // Reset velocity each frame based on current input
-        vel.vy = 0;
-        if (keyboard.up) vel.vy = -2;
-        if (keyboard.down) vel.vy = 2;
-        if (keyboard.left) vel.vx = -2;
-        if (keyboard.right) vel.vx = 2;
 
         // --- Update Systems in Order ---
+        playerInputSystem.update();
 
-        // 1. Collision System: Checks intended velocity against level, modifies velocity component if collision occurs.
         collisionSystem.update();
 
         // 2. Movement System: Applies the (potentially modified by collision) velocity to the position.
