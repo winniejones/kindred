@@ -37,6 +37,7 @@ public class GameMain extends Canvas implements Runnable {
     private final CameraSystem cameraSystem;
     private final CollisionSystem collisionSystem;
     private final PlayerInputSystem playerInputSystem;
+    private final DebugRenderSystem debugRenderSystem;
 
     private final int playerEntity;
     private int cameraEntity;
@@ -67,6 +68,7 @@ public class GameMain extends Canvas implements Runnable {
         cameraSystem = new CameraSystem(entityManager, screen);
         collisionSystem = new CollisionSystem(entityManager, level);
         playerInputSystem = new PlayerInputSystem(entityManager, keyboard);
+        debugRenderSystem = new DebugRenderSystem(entityManager, screen, level);
 
         // Create player entity with position and velocity
         playerEntity = createPlayer();
@@ -222,28 +224,7 @@ public class GameMain extends Canvas implements Runnable {
         // Render entities (relative to camera)
         renderSystem.render(); // RenderSystem should handle camera offset
 
-        // --- Debug Rendering ---
-        PositionComponent playerPos = entityManager.getComponent(playerEntity, PositionComponent.class);
-        ColliderComponent playerCol = entityManager.getComponent(playerEntity, ColliderComponent.class);
-
-        if (playerPos != null && playerCol != null) {
-            // Draw player hitbox outline (yellow) - adjust for camera if needed
-            screen.drawRect(playerPos.x, playerPos.y, 28, 28, 0xFFFF00, true); // Hitbox size = 28
-            // Draw player position marker (small red cross) - adjust for camera
-            screen.fillRect(playerPos.x - 1, playerPos.y - 1, 3, 3, 0xFF0000, true);
-        }
-        // Debug: highlight solid tiles in red overlay (relative to camera)
-        // This needs camera offset from screen or CameraComponent
-        int camX = screen.xOffset; // Example of getting offset
-        int camY = screen.yOffset;
-        for (int y = 0; y < level.getHeight(); y++) {
-            for (int x = 0; x < level.getWidth(); x++) {
-                if (level.isSolid(x, y)) {
-                     screen.drawRect(x * level.getTileSize() - camX, y * level.getTileSize() - camY, level.getTileSize(), level.getTileSize(), 0x99FF0000, false); // Semi-transparent red outline
-                }
-            }
-        }
-        // --- End Debug Rendering ---
+        debugRenderSystem.render();
 
 
         // Copy the rendered pixels from the Screen object to the Canvas's image buffer
