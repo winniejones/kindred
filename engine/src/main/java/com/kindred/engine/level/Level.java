@@ -7,12 +7,14 @@ public class Level {
     private final int width, height;
     private final int tileSize;
     private final int[][] tiles;
+    private final boolean[][] solids;
 
     public Level(int width, int height, int tileSize) {
         this.width = width;
         this.height = height;
         this.tileSize = tileSize;
         this.tiles = new int[height][width];
+        this.solids = new boolean[height][width];
     }
 
     public void generateTestMap() {
@@ -31,14 +33,26 @@ public class Level {
         }
     }
 
-    public int getTileColor(int x, int y) {
+    public int getTile(int x, int y) {
         if (x < 0 || y < 0 || x >= width || y >= height) return 0;
         return tiles[y][x];
     }
+    public boolean getIsSolid(int x, int y) {
+        if (x < 0 || y < 0 || x >= width || y >= height) return true;
+        return solids[y][x];
+    }
+
+    public void setTile(int x, int y, int color, boolean solid) {
+        if (x < 0 || y < 0 || x >= width || y >= height) return;
+        tiles[y][x] = color;
+        solids[y][x] = solid;
+    }
 
     public boolean isSolid(int x, int y) {
-        // Placeholder: no solid tiles yet
-        return false;
+        if (x < 0 || y < 0 || x >= width || y >= height) {
+            return true;
+        }; // treat out-of-bounds as solid
+        return solids[y][x];
     }
 
     public int getWidth() {

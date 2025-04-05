@@ -40,8 +40,8 @@ public class CameraSystem {
 
         screen.setOffset(camera.x, camera.y);
 
-        System.out.println("Camera: (" + camX + ", " + camY + ")");
-        System.out.println("Player: (" + playerPos.x + ", " + playerPos.y + ")");
+        System.out.print("Camera: (" + camX + ", " + camY + ")");
+        System.out.println("\tPlayer: (" + playerPos.x + ", " + playerPos.y + ")");
         return; // assume only one camera and one player
     }
 }
