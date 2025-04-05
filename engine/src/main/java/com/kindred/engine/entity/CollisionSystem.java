@@ -62,8 +62,30 @@ public class CollisionSystem {
             if (currentVx != 0) { // Only check if trying to move horizontally
                 // Check collision using the entity's specific hitbox dimensions
                 if (isColliding(hitboxX, hitboxY, currentVx, 0, col.hitboxWidth, col.hitboxHeight, tileSize)) {
-                    // System.out.println("Entity " + entity + ": Collision X Detected!"); // Debug
-                    finalVx = 0; // Collision detected, stop horizontal movement
+                    // Collision detected! Calculate maximum allowed movement (slide).
+                    if (currentVx > 0) { // Moving Right
+                        int leadingEdgeX = hitboxX + col.hitboxWidth - 1; // Right edge of hitbox
+                        // Find the tile X-coordinate the leading edge would enter
+                        int targetTileX = (leadingEdgeX + currentVx) / tileSize;
+                        // Calculate the X-coordinate of the left edge of the blocking tile
+                        int blockingEdgeX = targetTileX * tileSize;
+                        // Calculate the maximum distance the leading edge can move
+                        // We subtract 1 because the leading edge cannot occupy the same coordinate as the blocking edge.
+                        finalVx = blockingEdgeX - leadingEdgeX - 1;
+                        // Ensure we don't calculate negative movement if already overlapping (shouldn't happen with good checks)
+                        if (finalVx < 0) finalVx = 0;
+                        // System.out.println("Slide Right: Max Vx = " + finalVx); // Debug
+                    } else { // Moving Left
+                        // Find the tile X-coordinate the leading edge would enter
+                        int targetTileX = (hitboxX + currentVx) / tileSize;
+                        // Calculate the X-coordinate of the right edge of the blocking tile
+                        int blockingEdgeX = (targetTileX + 1) * tileSize;
+                        // Calculate the maximum distance the leading edge can move (will be negative or zero)
+                        finalVx = blockingEdgeX - hitboxX;
+                        // Ensure we don't calculate positive movement if already overlapping
+                        if (finalVx > 0) finalVx = 0;
+                        // System.out.println("Slide Left: Max Vx = " + finalVx); // Debug
+                    }
 
                 }
             }
@@ -74,8 +96,26 @@ public class CollisionSystem {
             if (currentVy != 0) { // Only check if trying to move vertically
                 // Check collision using the entity's specific hitbox dimensions
                 if (isColliding(hitboxX, hitboxY, 0, currentVy, col.hitboxWidth, col.hitboxHeight, tileSize)) {
-                    // System.out.println("Entity " + entity + ": Collision Y Detected!"); // Debug
-                    finalVy = 0; // Collision detected, stop vertical movement
+                    if (currentVy > 0) { // Moving Down
+                        int leadingEdgeY = hitboxY + col.hitboxHeight - 1; // Bottom edge of hitbox
+                        // Find the tile Y-coordinate the leading edge would enter
+                        int targetTileY = (leadingEdgeY + currentVy) / tileSize;
+                        // Calculate the Y-coordinate of the top edge of the blocking tile
+                        int blockingEdgeY = targetTileY * tileSize;
+                        // Calculate the maximum distance the leading edge can move
+                        finalVy = blockingEdgeY - leadingEdgeY - 1;
+                        if (finalVy < 0) finalVy = 0;
+                        // System.out.println("Slide Down: Max Vy = " + finalVy); // Debug
+                    } else { // Moving Up
+                        // Find the tile Y-coordinate the leading edge would enter
+                        int targetTileY = (hitboxY + currentVy) / tileSize;
+                        // Calculate the Y-coordinate of the bottom edge of the blocking tile
+                        int blockingEdgeY = (targetTileY + 1) * tileSize;
+                        // Calculate the maximum distance the leading edge can move
+                        finalVy = blockingEdgeY - hitboxY;
+                        if (finalVy > 0) finalVy = 0;
+                        // System.out.println("Slide Up: Max Vy = " + finalVy); // Debug
+                    }
                 }
             }
 
