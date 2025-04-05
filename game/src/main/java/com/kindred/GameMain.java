@@ -35,6 +35,7 @@ public class GameMain extends Canvas implements Runnable {
 
     private RenderSystem renderSystem;
     private CameraSystem cameraSystem;
+    private CollisionSystem collisionSystem;
 
     private int playerEntity;
     private int cameraEntity;
@@ -51,6 +52,10 @@ public class GameMain extends Canvas implements Runnable {
 
         screen = new Screen(WIDTH, HEIGHT);
         keyboard = new Keyboard();
+        // Create level
+        level = new Level(50, 30, 32);
+        level.generateTestMap();
+        addLevelBoundaries();
 
         addKeyListener(keyboard);
 
@@ -59,11 +64,7 @@ public class GameMain extends Canvas implements Runnable {
         animationSystem = new AnimationSystem(entityManager);
         renderSystem = new RenderSystem(entityManager, screen);
         cameraSystem = new CameraSystem(entityManager, screen);
-
-        // Create level
-        level = new Level(50, 30, 32);
-        level.generateTestMap();
-        addLevelBoundaries();
+        collisionSystem = new CollisionSystem(entityManager, level);
 
         // Create player entity with position and velocity
         playerEntity = createPlayer();
@@ -100,14 +101,15 @@ public class GameMain extends Canvas implements Runnable {
 
         // Example: down-facing, standing still (first row, first column)
         //BufferedImage playerSprite = AssetLoader.getSprite(sheet, 1, 0, 32);
-        int entity = entityManager.createEntity();
+        int playerEntity = entityManager.createEntity();
         entityManager.addComponent(playerEntity, new PositionComponent(100, 100));
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
         entityManager.addComponent(playerEntity, new SpriteComponent(walkFrames[0][0]));
         entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 5));
         entityManager.addComponent(playerEntity, new PlayerComponent());
+        entityManager.addComponent(playerEntity, new ColliderComponent(28, 28, -16, 0));
 
-        return entity;
+        return playerEntity;
     }
 
     private int createCamera() {
@@ -188,104 +190,32 @@ public class GameMain extends Canvas implements Runnable {
     private void update() {
         keyboard.update();
         VelocityComponent vel = entityManager.getComponent(playerEntity, VelocityComponent.class);
-        PositionComponent pos = entityManager.getComponent(playerEntity, PositionComponent.class);
 
-        if (pos == null || vel == null) {
-            System.err.println("Player entity missing Position or Velocity component!");
+        if (vel == null) {
+            System.err.println("Player entity missing Velocity component!");
             return; // Can't proceed
         }
 
         // Calculate desired velocity based on input for THIS FRAME
-        int desiredVx = 0;
-        int desiredVy = 0;
+        // Set desired velocity directly into the component based on input
+        vel.vx = 0; // Reset velocity each frame based on current input
+        vel.vy = 0;
+        if (keyboard.up) vel.vy = -2;
+        if (keyboard.down) vel.vy = 2;
+        if (keyboard.left) vel.vx = -2;
+        if (keyboard.right) vel.vx = 2;
 
-        if (keyboard.up) desiredVy = -2;
-        if (keyboard.down) desiredVy = 2;
-        if (keyboard.left) desiredVx = -2;
-        if (keyboard.right) desiredVx = 2;
+        // --- Update Systems in Order ---
 
-        // --- Collision Detection ---
-        int hitboxSize = 28;
-        int tileSize = level.getTileSize();
+        // 1. Collision System: Checks intended velocity against level, modifies velocity component if collision occurs.
+        collisionSystem.update();
 
-        // Store final velocity to apply after collision checks
-        int finalVx = desiredVx;
-        int finalVy = desiredVy;
-
-        // Check horizontal collision based on DESIRED horizontal movement
-        if (desiredVx != 0) { // Only check if trying to move horizontally
-            if (isColliding(pos.x, pos.y, desiredVx, 0, hitboxSize, tileSize)) {
-                // System.out.println("Collision X Detected!"); // Debug
-                finalVx = 0; // Collision detected, stop horizontal movement
-                // Optional: Add sliding logic here by adjusting pos.x slightly
-                // e.g., pos.x = (tileX + 1) * tileSize; or pos.x = tileX * tileSize - hitboxSize;
-            }
-        }
-
-        // Check vertical collision based on DESIRED vertical movement
-        // IMPORTANT: Use the ORIGINAL position (pos.x, pos.y) for this check,
-        // not a potentially adjusted one if sliding were implemented above.
-        if (desiredVy != 0) { // Only check if trying to move vertically
-            if (isColliding(pos.x, pos.y, 0, desiredVy, hitboxSize, tileSize)) {
-                // System.out.println("Collision Y Detected!"); // Debug
-                finalVy = 0; // Collision detected, stop vertical movement
-                // Optional: Add sliding logic here by adjusting pos.y slightly
-            }
-        }
-
-        // --- Update Velocity Component ---
-        // Set the final calculated velocity (potentially zeroed by collision)
-        // into the component. MovementSystem will use this.
-        vel.vx = finalVx;
-        vel.vy = finalVy;
-
-        // --- Update Systems ---
-        // MovementSystem reads the final vel.vx/vy and updates pos.x/y
+        // 2. Movement System: Applies the (potentially modified by collision) velocity to the position.
         movementSystem.update();
-        // Other systems update based on the new state
-        cameraSystem.update(); // Camera might follow the updated player position
-        animationSystem.update(); // Animation might change based on final velocity/state
-    }
 
-    /**
-     * Checks for collision between a hitbox at a potential future position and solid tiles.
-     * Assumes (x, y) is the top-left corner of the hitbox.
-     *
-     * @param x          Current X position (top-left of hitbox).
-     * @param y          Current Y position (top-left of hitbox).
-     * @param xa         Potential horizontal movement offset for this check.
-     * @param ya         Potential vertical movement offset for this check.
-     * @param hitboxSize The width and height of the collision hitbox.
-     * @param tileSize   The size (width/height) of a single map tile.
-     * @return True if a collision is detected, false otherwise.
-     */
-    private boolean isColliding(int x, int y, int xa, int ya, int hitboxSize, int tileSize) {
-        if (tileSize <= 0) {
-            System.err.println("Tile size is zero or negative, cannot perform collision check.");
-            return true; // Prevent movement if tile size is invalid
-        }
-        // Check all 4 corners of the hitbox's potential future position
-        for (int c = 0; c < 4; c++) {
-            // Calculate corner offsets relative to the hitbox top-left
-            int cornerXOffset = (c % 2) * (hitboxSize - 1);
-            int cornerYOffset = (c / 2) * (hitboxSize - 1);
-
-            // Calculate the absolute world coordinates of the corner *after* the potential move
-            int futureCornerX = x + xa + cornerXOffset;
-            int futureCornerY = y + ya + cornerYOffset;
-
-            // Convert the world coordinates of the corner to tile coordinates
-            int tileX = futureCornerX / tileSize;
-            int tileY = futureCornerY / tileSize;
-
-            // Check if the tile at these coordinates is solid
-            if (level.isSolid(tileX, tileY)) {
-                // System.out.println("Collision: Corner " + c + " at world (" + futureCornerX + "," + futureCornerY + ") -> tile (" + tileX + "," + tileY + ")"); // Detailed debug
-                return true; // Collision detected
-            }
-        }
-        // No collision detected at any of the four corners
-        return false;
+        // 3. Other Systems: Update based on the new state.
+        cameraSystem.update(); // Camera follows the new position
+        animationSystem.update(); // Animation updates based on final velocity/state
     }
 
     private void render() {
@@ -298,13 +228,7 @@ public class GameMain extends Canvas implements Runnable {
         // Prepare screen for drawing
         screen.clear(); // Clear the pixel buffer (e.g., fill with black or background color)
 
-        // Get camera position/offset (assuming CameraSystem updates Screen's offset)
-        // cameraSystem.update() should have set the screen's render offset
-        // Or get CameraComponent: CameraComponent cam = entityManager.getComponent(cameraEntity, CameraComponent.class);
-        // screen.setOffset(cam.x, cam.y);
-
         // Render the level tiles (relative to camera)
-        // Assuming level.render takes the screen to draw onto
         level.render(screen); // This needs to account for camera offset
 
         // Render entities (relative to camera)
@@ -312,7 +236,9 @@ public class GameMain extends Canvas implements Runnable {
 
         // --- Debug Rendering ---
         PositionComponent playerPos = entityManager.getComponent(playerEntity, PositionComponent.class);
-        if (playerPos != null) {
+        ColliderComponent playerCol = entityManager.getComponent(playerEntity, ColliderComponent.class);
+
+        if (playerPos != null && playerCol != null) {
             // Draw player hitbox outline (yellow) - adjust for camera if needed
             screen.drawRect(playerPos.x, playerPos.y, 28, 28, 0xFFFF00, true); // Hitbox size = 28
             // Draw player position marker (small red cross) - adjust for camera
