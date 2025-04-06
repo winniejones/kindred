@@ -8,10 +8,13 @@ import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
 
 import javax.swing.*;
-import java.awt.*;
+import java.awt.Canvas;
+import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.util.List;
 
 public class GameMain extends Canvas implements Runnable {
 
@@ -56,11 +59,7 @@ public class GameMain extends Canvas implements Runnable {
         screen = new Screen(WIDTH, HEIGHT);
         keyboard = new Keyboard();
         // Create level
-        // level = MapLoader.loadLevelFromImage("/assets/level/spawn.png", 32);
-        level = MapLoader.loadLevelFromImage("/assets/level/spawn.png", 32);
-        // level = new Level(50, 30, 32);
-        // level.generateTestMap();
-        // addLevelBoundaries();
+        level = MapLoader.loadLevelFromImage("/assets/level/spawn_map.png", 16);
 
         addKeyListener(keyboard);
 
@@ -77,43 +76,70 @@ public class GameMain extends Canvas implements Runnable {
         playerEntity = createPlayer();
         cameraEntity = createCamera();
 
-        // Add solid walls to the level borders
     }
 
-    // Helper to add solid boundaries to the level
-    private void addLevelBoundaries() {
-        for (int x = 0; x < level.getWidth(); x++) {
-            level.setTile(x, 0, 0x222222, true); // Top wall
-            level.setTile(x, level.getHeight() - 1, 0x222222, true); // Bottom wall
-        }
-        for (int y = 1; y < level.getHeight() - 1; y++) { // Avoid corners done above
-            level.setTile(0, y, 0x222222, true); // Left wall
-            level.setTile(level.getWidth() - 1, y, 0x222222, true); // Right wall
-        }
-        // Add a test solid block inside for collision testing
-        level.setTile(10, 10, 0x990000, true);
-        level.setTile(11, 10, 0x990000, true);
-        level.setTile(10, 11, 0x990000, true);
-        level.setTile(11, 11, 0x990000, true);
-    }
 
     private int createPlayer() {
-        BufferedImage sheet = AssetLoader.loadImage("/assets/sprites/player.png");
+        String playerSheetPath = "/assets/sprites/player.png";
+        BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
         BufferedImage[][] walkFrames = new BufferedImage[4][3]; // 4 directions, 3 frames each
+        int playerSpriteSize = 32;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 4; col++) {
                 walkFrames[col][row] = AssetLoader.getSprite(sheet, col, row, 32);
             }
         }
+        // Determine the initial sprite - use first down frame if loaded, otherwise get a placeholder
+        BufferedImage initialSprite;
+        if (walkFrames[0] != null && walkFrames[0].length > 0 && walkFrames[0][0] != null) {
+            initialSprite = walkFrames[0][0]; // Default to first down frame
+        } else {
+            // If loading failed, get a placeholder from AssetLoader (which creates one internally)
+            // We try loading the sheet again, loadImage returns placeholder on failure.
+            // Alternatively, create a dedicated placeholder method in AssetLoader if preferred.
+            System.err.println("Using placeholder for initial player sprite.");
+            initialSprite = AssetLoader.loadImage(playerSheetPath); // Will return placeholder if path failed before
+            // Ensure the placeholder isn't null itself (loadImage might return null on severe error)
+            if (initialSprite == null || initialSprite.getWidth() <= 1) {
+                initialSprite = new BufferedImage(playerSpriteSize, playerSpriteSize, BufferedImage.TYPE_INT_ARGB); // Ultimate fallback: transparent square
+            }
+        }
 
-        // Example: down-facing, standing still (first row, first column)
-        //BufferedImage playerSprite = AssetLoader.getSprite(sheet, 1, 0, 32);
         int playerEntity = entityManager.createEntity();
-        entityManager.addComponent(playerEntity, new PositionComponent(317, 229));
+
+        // --- Get Player Start Position from Level ---
+        int startX, startY;
+        int loadedSpawnX = level.getPlayerSpawnX();
+        int loadedSpawnY = level.getPlayerSpawnY();
+
+        if (loadedSpawnX != -1 && loadedSpawnY != -1) {
+            // Use spawn point found in the map file
+            startX = loadedSpawnX;
+            startY = loadedSpawnY;
+            System.out.println("Using spawn point from map: (" + startX + ", " + startY + ")");
+        } else {
+            // Fallback if no spawn point color was found in the map
+            startX = 100; // Default X (ensure this is a walkable area!)
+            startY = 100; // Default Y (ensure this is a walkable area!)
+            System.out.println("Warning: No spawn point found in map file. Using default spawn: (" + startX + ", " + startY + ")");
+            // Optionally check if default is valid
+            // if (level.isSolid(startX / level.getTileSize(), startY / level.getTileSize())) {
+            //     System.err.println("FATAL: Default spawn point is inside a solid tile!");
+            //     // Handle error - maybe search for a valid spot?
+            // }
+        }
+        // --- End of spawn position logic ---
+
+        System.out.println("Spawning player at: (" + startX + ", " + startY + ")");
+        entityManager.addComponent(playerEntity, new PositionComponent(startX, startY));
+        // --- End of change ---
+
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
-        entityManager.addComponent(playerEntity, new SpriteComponent(walkFrames[0][0]));
-        entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 5));
+        entityManager.addComponent(playerEntity, new SpriteComponent(initialSprite)); // Use loaded or default sprite
+        // Ensure AnimationComponent constructor handles the structure of walkFrames correctly
+        entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 10)); // Use loaded frames, adjust frame delay (e.g., 10 updates per frame)
         entityManager.addComponent(playerEntity, new PlayerComponent());
+        // Collider: 20 wide, 28 high, offset 6px right, 0px down from PositionComponent's x,y
         entityManager.addComponent(playerEntity, new ColliderComponent(20, 28, 6, 0));
 
         return playerEntity;

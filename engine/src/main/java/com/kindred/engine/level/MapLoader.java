@@ -28,37 +28,36 @@ public class MapLoader {
             System.out.println("Map dimensions: " + width + "x" + height); // Debug output
 
             Level level = new Level(width, height, tileSize);
-            boolean firstPixel = true; // Flag to print only the first few pixels
+            // Efficiently read all pixel data into a 1D array
+            int[] pixelData = new int[width * height];
+            image.getRGB(0, 0, width, height, pixelData, 0, width);
 
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int pixel = image.getRGB(x, y); // Gets ARGB color
-                    boolean solid = false;
-                    int tileColor = pixel; // Store the color for rendering/identification
+            // Iterate through the 1D pixel data array
+            for (int i = 0; i < pixelData.length; i++) {
+                int pixelColor = pixelData[i]; // Get the ARGB color for this pixel
 
-                    // --- Debug: Print first few pixel values ---
-                    if (firstPixel && x < 5 && y < 5) { // Limit debug output
-                        System.out.printf("DEBUG: Pixel at (%d, %d) = 0x%08X (int: %d)%n", x, y, pixel, pixel);
-                        if (x == 4 && y == 4) firstPixel = false; // Stop printing after a few
-                    }
-                    // -----------------------------------------
+                // Calculate corresponding x, y coordinates
+                int x = i % width;
+                int y = i / width;
 
-                    // --- Solidity Logic based on Color ---
-                    if (pixel == COLOR_SOLID_WALL) { // Check if the pixel color is EXACTLY black
-                        solid = true;
-                        // Optional Debug: System.out.printf("DEBUG: Tile (%d, %d) SOLID (Is Black: 0x%08X)%n", x, y, pixel);
-                    } else {
-                        // Treat other defined colors or default as non-solid
-                        solid = false;
-                        // Optional Debug: System.out.printf("DEBUG: Tile (%d, %d) NOT SOLID (Color: 0x%08X)%n", x, y, pixel);
-                    }
-                    // ------------------------------------
+                // --- Determine Tile Type based on Color ---
+                // Use the static helper method from the Tile class
+                Tile tile = Tile.getTileFromColor(pixelColor);
+                // -----------------------------------------
 
-                    // Set the tile using the determined solidity and the original pixel color
-                    level.setTile(x, y, tileColor, solid);
-                }
+                // --- Store the determined Tile object in the Level ---
+                // This now calls the updated Level.setTile method
+                level.setTile(x, y, tile);
+                // -------------------------------------------------
             }
-            System.out.println("Map loading complete."); // Debug output
+
+            System.out.println("Map loading complete.");
+            // Optionally report if a spawn point was found
+            if (level.getPlayerSpawnX() != -1) {
+                System.out.println("Player spawn point detected during map load.");
+            } else {
+                System.out.println("No player spawn point color detected in map.");
+            }
             return level;
         } catch (IOException | NullPointerException e) { // Catch potential null from ImageIO.read
             // Log the error more informatively

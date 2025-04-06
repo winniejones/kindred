@@ -130,6 +130,45 @@ public class Screen {
         }
     }
 
+    public void drawSpriteWithOffset(int xp, int yp, BufferedImage sprite) {
+        if (sprite == null) return; // Don't draw if sprite is null
+
+        // Apply camera offset to get screen coordinates
+        xp -= xOffset;
+        yp -= yOffset;
+
+        int spriteWidth = sprite.getWidth();
+        int spriteHeight = sprite.getHeight();
+
+        // Determine the screen area to draw onto (clipping)
+        int startX = Math.max(0, xp);
+        int startY = Math.max(0, yp);
+        int endX = Math.min(width, xp + spriteWidth);
+        int endY = Math.min(height, yp + spriteHeight);
+
+        // Determine the corresponding area to read from the sprite
+        int spriteStartX = startX - xp;
+        int spriteStartY = startY - yp;
+
+        // Loop through the clipped screen coordinates
+        for (int y = startY; y < endY; y++) {
+            int spriteY = y - yp; // Corresponding y in sprite image
+            int screenRowOffset = y * width;
+            for (int x = startX; x < endX; x++) {
+                int spriteX = x - xp; // Corresponding x in sprite image
+                int col = sprite.getRGB(spriteX, spriteY); // Get ARGB color from sprite
+
+                // --- Transparency Check ---
+                // Check if the alpha byte is 0 (fully transparent)
+                if ((col >>> 24) != 0x00) {
+                    // Alternatively, use a color key: if (col != COLOR_KEY_MAGENTA) {
+                    pixels[x + screenRowOffset] = col; // Draw non-transparent pixel
+                }
+                // --------------------------
+            }
+        }
+    }
+
 
     // These should eventually be broken out into a separate Renderer class if complexity grows.
 }
