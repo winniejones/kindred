@@ -3,6 +3,7 @@ package com.kindred;
 import com.kindred.engine.entity.*;
 import com.kindred.engine.input.Keyboard;
 import com.kindred.engine.level.Level;
+import com.kindred.engine.level.MapLoader;
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
 
@@ -55,9 +56,11 @@ public class GameMain extends Canvas implements Runnable {
         screen = new Screen(WIDTH, HEIGHT);
         keyboard = new Keyboard();
         // Create level
-        level = new Level(50, 30, 32);
-        level.generateTestMap();
-        addLevelBoundaries();
+        // level = MapLoader.loadLevelFromImage("/assets/level/spawn.png", 32);
+        level = MapLoader.loadLevelFromImage("/assets/level/spawn.png", 32);
+        // level = new Level(50, 30, 32);
+        // level.generateTestMap();
+        // addLevelBoundaries();
 
         addKeyListener(keyboard);
 
@@ -106,7 +109,7 @@ public class GameMain extends Canvas implements Runnable {
         // Example: down-facing, standing still (first row, first column)
         //BufferedImage playerSprite = AssetLoader.getSprite(sheet, 1, 0, 32);
         int playerEntity = entityManager.createEntity();
-        entityManager.addComponent(playerEntity, new PositionComponent(100, 100));
+        entityManager.addComponent(playerEntity, new PositionComponent(317, 229));
         entityManager.addComponent(playerEntity, new VelocityComponent(0, 0));
         entityManager.addComponent(playerEntity, new SpriteComponent(walkFrames[0][0]));
         entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 5));
@@ -197,13 +200,8 @@ public class GameMain extends Canvas implements Runnable {
 
         // --- Update Systems in Order ---
         playerInputSystem.update();
-
         collisionSystem.update();
-
-        // 2. Movement System: Applies the (potentially modified by collision) velocity to the position.
         movementSystem.update();
-
-        // 3. Other Systems: Update based on the new state.
         cameraSystem.update(); // Camera follows the new position
         animationSystem.update(); // Animation updates based on final velocity/state
     }
