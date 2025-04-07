@@ -67,7 +67,7 @@ public class GameMain extends Canvas implements Runnable {
         movementSystem = new MovementSystem(entityManager);
         animationSystem = new AnimationSystem(entityManager);
         renderSystem = new RenderSystem(entityManager, screen);
-        cameraSystem = new CameraSystem(entityManager, screen);
+        cameraSystem = new CameraSystem(entityManager, screen, level);
         collisionSystem = new CollisionSystem(entityManager, level);
         playerInputSystem = new PlayerInputSystem(entityManager, keyboard);
         debugRenderSystem = new DebugRenderSystem(entityManager, screen, level);
@@ -81,17 +81,46 @@ public class GameMain extends Canvas implements Runnable {
 
     private int createPlayer() {
         String playerSheetPath = "/assets/sprites/player.png";
-        BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
         BufferedImage[][] walkFrames = new BufferedImage[4][3]; // 4 directions, 3 frames each
+        boolean playerSpritesLoaded = false;
         int playerSpriteSize = 32;
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 4; col++) {
-                walkFrames[col][row] = AssetLoader.getSprite(sheet, col, row, 32);
+        System.out.println("Attempting to load player animation frames using nested loops...");
+        try {
+            BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
+
+            if (sheet != null && sheet.getWidth() >= playerSpriteSize * 4 && sheet.getHeight() >= playerSpriteSize * 3) {
+                // Nested loops based on user's provided logic
+                // Assumes sheet layout: Columns are directions (0-3), Rows are frames (0-2)
+                for (int frameRow = 0; frameRow < 3; frameRow++) {        // Iterate through frames (rows on sheet)
+                    for (int dirCol = 0; dirCol < 4; dirCol++) {      // Iterate through directions (columns on sheet)
+                        // Get sprite using AssetLoader
+                        BufferedImage sprite = AssetLoader.getSprite(sheet, dirCol, frameRow, playerSpriteSize, playerSpriteSize);
+                        // Assign to walkFrames[direction][frame]
+                        walkFrames[dirCol][frameRow] = sprite;
+                        // Check if sprite loading failed (AssetLoader returns placeholder)
+                        if (sprite == null || sprite.getWidth() <= 1) {
+                            System.err.printf("Warning: Failed to load player sprite at sheet coords (col:%d, row:%d)%n", dirCol, frameRow);
+                        }
+                    }
+                }
+                playerSpritesLoaded = true; // Assume loaded if sheet was valid, even if some getSprite calls failed (they return placeholders)
+                System.out.println("Player animation frames processed.");
+                // Optional: Add check here to see if any frame is actually null if needed
+            } else {
+                if (sheet == null) {
+                    System.err.println("Failed to load player spritesheet: " + playerSheetPath);
+                } else {
+                    System.err.printf("Player spritesheet is too small (%dx%d) for expected layout (4x%d sprites of size %dx%d)%n",
+                            sheet.getWidth(), sheet.getHeight(), 3, playerSpriteSize, playerSpriteSize);
+                }
             }
+        } catch (Exception e) {
+            System.err.println("Error loading player spritesheet or extracting sprites: " + e.getMessage());
+            e.printStackTrace(); // Print stack trace for more detail
         }
         // Determine the initial sprite - use first down frame if loaded, otherwise get a placeholder
         BufferedImage initialSprite;
-        if (walkFrames[0] != null && walkFrames[0].length > 0 && walkFrames[0][0] != null) {
+        if (playerSpritesLoaded && walkFrames[0] != null && walkFrames[0][0] != null && walkFrames[0][0].getWidth() > 1) {
             initialSprite = walkFrames[0][0]; // Default to first down frame
         } else {
             // If loading failed, get a placeholder from AssetLoader (which creates one internally)
@@ -140,7 +169,7 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(playerEntity, new AnimationComponent(walkFrames, 10)); // Use loaded frames, adjust frame delay (e.g., 10 updates per frame)
         entityManager.addComponent(playerEntity, new PlayerComponent());
         // Collider: 20 wide, 28 high, offset 6px right, 0px down from PositionComponent's x,y
-        entityManager.addComponent(playerEntity, new ColliderComponent(20, 28, 6, 0));
+        entityManager.addComponent(playerEntity, new ColliderComponent(15, 14, 8, 15));
 
         return playerEntity;
     }
