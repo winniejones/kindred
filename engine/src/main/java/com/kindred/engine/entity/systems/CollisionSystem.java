@@ -4,7 +4,9 @@ import com.kindred.engine.entity.components.ColliderComponent;
 import com.kindred.engine.entity.components.PositionComponent;
 import com.kindred.engine.entity.components.VelocityComponent;
 import com.kindred.engine.entity.core.EntityManager;
+import com.kindred.engine.entity.core.System;
 import com.kindred.engine.level.Level;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * System responsible for handling collision detection between entities
@@ -12,7 +14,8 @@ import com.kindred.engine.level.Level;
  * in the game Level. It adjusts the entity's velocity component if a
  * collision is detected, preventing movement into solid areas.
  */
-public class CollisionSystem {
+@Slf4j
+public class CollisionSystem implements System {
     private final EntityManager entityManager;
     private final Level level; // Reference to the level for tile collision checks
 
@@ -31,10 +34,11 @@ public class CollisionSystem {
      * Updates all relevant entities, checking for collisions and adjusting velocity.
      * This should typically be called after input handling and before the MovementSystem.
      */
+    @Override
     public void update() {
         int tileSize = level.getTileSize();
         if (tileSize <= 0) {
-            System.err.println("CollisionSystem: Invalid tile size in Level. Skipping collision checks.");
+            log.error("CollisionSystem: Invalid tile size in Level. Skipping collision checks.");
             return; // Cannot perform checks with invalid tile size
         }
 

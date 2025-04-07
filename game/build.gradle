@@ -13,6 +13,19 @@ dependencies {
     implementation project(':engine')
     implementation project(':networking')
 
+    compileOnly 'org.projectlombok:lombok:1.18.38' // Check for the latest Lombok version
+    // 'annotationProcessor' tells Gradle to run Lombok's annotation processing during compilation
+    annotationProcessor 'org.projectlombok:lombok:1.18.38' // Use the same version
+
+    // SLF4J API (The logging facade interface)
+    // 'implementation' makes it available at compile time and runtime
+    implementation("org.slf4j:slf4j-api:2.0.17")
+
+    // Logback Classic (The logging backend/implementation)
+    // 'runtimeOnly' means Logback is only needed at runtime to make SLF4J work.
+    // Your code only depends on the SLF4J API directly.
+    runtimeOnly 'ch.qos.logback:logback-classic:1.5.18'
+
     testImplementation platform('org.junit:junit-bom:5.9.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }

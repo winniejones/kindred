@@ -3,10 +3,11 @@ package com.kindred.engine.entity.systems;
 import com.kindred.engine.entity.components.PlayerComponent;
 import com.kindred.engine.entity.components.PositionComponent;
 import com.kindred.engine.entity.core.EntityManager;
+import com.kindred.engine.entity.core.System;
 import com.kindred.engine.level.Level;
 import com.kindred.engine.render.Screen;
 
-public class CameraSystem {
+public class CameraSystem implements System {
     private final EntityManager entityManager;
     private final Screen screen;
     private final Level level;
@@ -28,6 +29,7 @@ public class CameraSystem {
         this.level = level;
     }
 
+    @Override
     public void update() {
         Integer playerEntity = entityManager.getFirstEntityWith(PlayerComponent.class, PositionComponent.class);
 

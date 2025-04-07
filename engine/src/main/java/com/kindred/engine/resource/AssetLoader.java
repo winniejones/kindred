@@ -1,5 +1,7 @@
 package com.kindred.engine.resource;
 
+import lombok.extern.slf4j.Slf4j;
+
 import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.Color;
@@ -11,10 +13,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 public class AssetLoader {
     // Cache to store already loaded images (maps path to image)
     private static final Map<String, BufferedImage> imageCache = new HashMap<>();
-    private static BufferedImage placeholderTile = null; // Placeholder for getSprite failures
+    private static final Map<String, BufferedImage> placeholderCache = new HashMap<>();
 
     /**
      * Loads an image from the classpath (e.g. /assets/sprites/player.png)
@@ -36,13 +39,12 @@ public class AssetLoader {
                 // Throw exception if ImageIO fails to read
                 throw new IOException("ImageIO.read returned null for path: " + path);
             }
-            System.out.println("AssetLoader: Loaded image " + path + " (" + image.getWidth() + "x" + image.getHeight() + ")");
+            log.info("AssetLoader: Loaded image " + path + " (" + image.getWidth() + "x" + image.getHeight() + ")");
             // 3. Store in cache on success
             imageCache.put(path, image);
             return image;
         } catch (IOException e) {
-            System.err.println("Failed to load image: " + path);
-            e.printStackTrace();
+            log.error("Failed to load image: {}", path, e);
             // Return a minimal placeholder (consistent with original code)
             return createPlaceholderImage(1, 1);
         }
@@ -74,7 +76,7 @@ public class AssetLoader {
     public static BufferedImage getSprite(BufferedImage sheet, int col, int row, int spriteWidth, int spriteHeight) {
         // 1. Check if sheet is valid
         if (sheet == null) {
-            System.err.println("AssetLoader Error: Cannot getSprite from a null spritesheet.");
+            log.error("AssetLoader Error: Cannot getSprite from a null spritesheet.");
             return createPlaceholderImage(spriteWidth, spriteHeight); // Return placeholder matching expected size
         }
 
@@ -84,7 +86,7 @@ public class AssetLoader {
 
         // 3. Perform bounds check BEFORE calling getSubimage
         if (x < 0 || y < 0 || x + spriteWidth > sheet.getWidth() || y + spriteHeight > sheet.getHeight()) {
-            System.err.printf("AssetLoader Error: Sprite coordinates (col:%d, row:%d) with size (%dx%d) are out of bounds for sheet size (%dx%d).%n",
+            log.error("AssetLoader Error: Sprite coordinates (col:%d, row:%d) with size (%dx%d) are out of bounds for sheet size (%dx%d).%n",
                     col, row, spriteWidth, spriteHeight, sheet.getWidth(), sheet.getHeight());
             return createPlaceholderImage(spriteWidth, spriteHeight); // Return placeholder
         }
@@ -93,9 +95,8 @@ public class AssetLoader {
         try {
             return sheet.getSubimage(x, y, spriteWidth, spriteHeight);
         } catch (Exception e) {
-            System.err.printf("AssetLoader Error: Failed to get subimage at pixel coords (%d, %d) for sprite (col:%d, row:%d) size (%dx%d).%n",
-                    x, y, col, row, spriteWidth, spriteHeight);
-            e.printStackTrace();
+            log.error("AssetLoader Error: Failed to get subimage at pixel coords (%d, %d) for sprite (col:%d, row:%d) size (%dx%d).%n",
+                    x, y, col, row, spriteWidth, spriteHeight, e);
             return createPlaceholderImage(spriteWidth, spriteHeight); // Return placeholder
         }
     }
@@ -146,44 +147,42 @@ public class AssetLoader {
      */
     public static void clearCache() {
         imageCache.clear();
-        System.out.println("AssetLoader: Image cache cleared.");
+        placeholderCache.clear();
+        log.info("AssetLoader: Image cache cleared.");
     }
 
     /**
-     * Creates a simple placeholder image (e.g., magenta square).
+     * Creates or retrieves a cached placeholder image (magenta square).
      * Used as a return value when image loading or sprite extraction fails.
      * @param width Width of the placeholder.
      * @param height Height of the placeholder.
-     * @return A BufferedImage placeholder.
+     * @return A cached or newly created BufferedImage placeholder.
      */
-    private static BufferedImage createPlaceholderImage(int width, int height) {
+    public static BufferedImage createPlaceholderImage(int width, int height) {
         // Ensure minimum size of 1x1
         width = Math.max(1, width);
         height = Math.max(1, height);
+        String key = width + "x" + height; // Cache key based on size
+
+        // Check placeholder cache first
+        if (placeholderCache.containsKey(key)) {
+            return placeholderCache.get(key);
+        }
+
+        // Create placeholder if not cached
         // Use a simple magenta color often used for missing textures
-        // Use TYPE_INT_ARGB to ensure compatibility
+        // Use TYPE_INT_ARGB to ensure compatibility and support transparency if needed later
         BufferedImage placeholder = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = placeholder.createGraphics();
-        g.setColor(new Color(255, 0, 254)); // Magenta
-        g.fillRect(0, 0, width, height);
-        g.dispose();
-        return placeholder;
+        try { // Ensure graphics object is disposed
+            g.setColor(new Color(255, 0, 255)); // Magenta
+            g.fillRect(0, 0, width, height);
+        } finally {
+            g.dispose();
+        }
 
-        // Cache the 1x1 placeholder specifically if needed often
-        // if (width == 1 && height == 1) {
-        //    if (placeholderTile == null) {
-        //        placeholderTile = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        //        placeholderTile.setRGB(0, 0, 0xFFFF00FF); // Magenta
-        //    }
-        //    return placeholderTile;
-        // } else {
-        //    // Create larger placeholders dynamically if needed
-        //    BufferedImage ph = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        //    Graphics2D g = ph.createGraphics();
-        //    g.setColor(new Color(255, 0, 255)); // Magenta
-        //    g.fillRect(0, 0, width, height);
-        //    g.dispose();
-        //    return ph;
-        // }
+        // Store in cache and return
+        placeholderCache.put(key, placeholder);
+        return placeholder;
     }
 }

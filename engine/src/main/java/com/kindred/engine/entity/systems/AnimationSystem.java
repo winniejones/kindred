@@ -4,8 +4,9 @@ import com.kindred.engine.entity.components.AnimationComponent;
 import com.kindred.engine.entity.components.SpriteComponent;
 import com.kindred.engine.entity.components.VelocityComponent;
 import com.kindred.engine.entity.core.EntityManager;
+import com.kindred.engine.entity.core.System;
 
-public class AnimationSystem {
+public class AnimationSystem implements System {
 
     private final EntityManager entityManager;
 
@@ -13,6 +14,7 @@ public class AnimationSystem {
         this.entityManager = entityManager;
     }
 
+    @Override
     public void update() {
         for (int entity : entityManager.getEntitiesWith(AnimationComponent.class, SpriteComponent.class, VelocityComponent.class)) {
             AnimationComponent anim = entityManager.getComponent(entity, AnimationComponent.class);

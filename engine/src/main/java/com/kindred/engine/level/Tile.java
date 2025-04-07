@@ -2,9 +2,14 @@ package com.kindred.engine.level;
 
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.awt.image.BufferedImage;
+import java.awt.Color; // Import Color for fallback sprite
+import java.awt.Graphics2D; // Import Graphics2D for fallback sprite
 
+@Slf4j
 public class Tile {
 
     // --- Configuration ---
@@ -18,7 +23,12 @@ public class Tile {
     public static final int COLOR_WALL_BLACK = 0xFF000000;  // Example: Black Wall
     public static final int COLOR_GRASS = 0xFF00FF00;       // Example: Green Grass
     public static final int COLOR_WATER = 0xFF00FFFF;       // Example: Cyan Water
-    public static final int COLOR_SPAWN_POINT = 0xFFFF0000; // Example: Red Spawn Point
+    
+    // Spawn Marker Colors (Unique colors not used for terrain):
+    public static final int COLOR_PLAYER_SPAWN = 0xFFFF0000; // Example: Red Spawn Point
+    public static final int COLOR_NPC_SPAWN = 0xFF00FF01; // Example: Green for NPC
+    public static final int COLOR_ENEMY_SPAWN = 0xFFFF00FE; // Example: Magenta for Enemy
+
 
     // --- Load Spritesheets ---
     // TODO: Update these paths to your actual spritesheet locations
@@ -29,7 +39,6 @@ public class Tile {
 
     // --- Static Tile Instances ---
     // Load sprites using AssetLoader.getSprite(sheet, col, row, width, height)
-    // Provide default/fallback values if loading fails
 
     public static final Tile VOID = new Tile(
             createDefaultSprite(TILE_WIDTH, TILE_HEIGHT, COLOR_VOID), // Use fallback color sprite for void
@@ -66,33 +75,32 @@ public class Tile {
             false  // buildable
     );
 
-    // Spawn point tile - uses floor sprite but has unique color for detection
-    public static final Tile SPAWN_POINT_MARKER = new Tile(
-            AssetLoader.getSprite(tileSheet, 0, 2, TILE_WIDTH, TILE_HEIGHT), // Use floor sprite visually
-            false, // solid
-            COLOR_SPAWN_POINT, // Use spawn color for detection in MapLoader
-            true   // buildable (usually spawn points are on buildable ground)
-    );
+     // NOTE: We don't need specific Tile instances for spawn points,
+     // MapLoader detects the color and places a regular floor tile.
 
 
     // --- Instance Variables ---
     public final BufferedImage sprite; // Sprite for rendering this tile (can be placeholder)
+    /**
+     * -- GETTER --
+     * Checks if solid
+     */
+    @Getter
     public final boolean solid;      // Does this tile block movement?
     public final int mapColor;       // The ARGB color used in the map image file for this tile type
+    /**
+     * -- GETTER --
+     * Checks if buildable
+     */
+    @Getter
     public final boolean buildable;  // Can structures be built on this tile type?
 
-    /**
-     * Constructor for a Tile type. Handles null sprites by assigning a fallback.
-     * @param sprite The BufferedImage sprite for this tile (can be null or placeholder from AssetLoader).
-     * @param solid True if the tile blocks movement, false otherwise.
-     * @param mapColor The ARGB integer color representing this tile in the map image file.
-     * @param buildable True if structures can be built on this tile type.
-     */
+    /** Constructor */
     public Tile(BufferedImage sprite, boolean solid, int mapColor, boolean buildable) {
         // Use the provided sprite, or if null/placeholder, create a colored square fallback
         if (sprite == null || sprite.getWidth() <= 1) { // Check if AssetLoader returned null or placeholder
             this.sprite = createDefaultSprite(TILE_WIDTH, TILE_HEIGHT, mapColor);
-            System.err.println("Warning: Using fallback color sprite for tile with mapColor: 0x" + Integer.toHexString(mapColor));
+            log.error("Warning: Using fallback color sprite for tile with mapColor: 0x" + Integer.toHexString(mapColor));
         } else {
             this.sprite = sprite;
         }
@@ -101,74 +109,43 @@ public class Tile {
         this.buildable = buildable;
     }
 
-    /**
-     * Renders this tile at the specified TILE coordinates (not pixel coordinates).
-     * Delegates the actual drawing to the Screen object.
-     *
-     * @param x Tile x-coordinate.
-     * @param y Tile y-coordinate.
-     * @param screen The Screen object to render onto.
-     * @param tileSize The size of one tile in pixels (passed in case needed, though TILE_WIDTH/HEIGHT used here).
-     */
+    /** Renders this tile */
     public void render(int x, int y, Screen screen, int tileSize) {
-        // Calculate pixel coordinates for the top-left of the tile
         int screenX = x * tileSize;
         int screenY = y * tileSize;
-
-        // Use the Screen method that handles sprites and camera offset
-        // This assumes drawSpriteWithOffset handles null sprites gracefully,
-        // or we rely on the constructor assigning a non-null fallback sprite.
         screen.drawSpriteWithOffset(screenX, screenY, this.sprite);
     }
 
-    /** Checks if this tile type is solid. */
-    public boolean isSolid() {
-        return solid;
-    }
-
-    /** Checks if this tile type is buildable. */
-    public boolean isBuildable() {
-        return buildable;
-    }
-
-    /**
-     * Static helper method to get a Tile object based on a map color.
-     * This is used by MapLoader to translate pixels to Tile types.
-     *
-     * @param mapColor The ARGB color read from the map image.
-     * @return The corresponding static Tile instance, or VOID if no match.
-     */
+    /** Static helper method to get a Tile object based on a map color. */
     public static Tile getTileFromColor(int mapColor) {
-        // Use if-else if or switch for lookup
+        // IMPORTANT: This method should ONLY return terrain/wall tiles.
+        // Marker colors (spawn points) are handled separately in MapLoader.
         if (mapColor == COLOR_WALL_BLACK) {
             return WALL;
         } else if (mapColor == COLOR_FLOOR_GRAY) {
             return FLOOR;
         } else if (mapColor == COLOR_GRASS) {
+             // Warning: This color might be used as NPC spawn marker in example
             return GRASS;
         } else if (mapColor == COLOR_WATER) {
             return WATER;
-        } else if (mapColor == COLOR_SPAWN_POINT) {
-            // Return a specific marker or the tile it should look like
-            return SPAWN_POINT_MARKER; // Use the marker tile instance
         }
-        // Add more tile types here based on their colors
+        // Add more terrain tile types here
 
-        // Default case if no specific color matches
-        if (mapColor != COLOR_VOID && (mapColor >>> 24) != 0) { // Avoid spamming for expected void or transparent areas
-            // System.err.println("Warning: Unknown map color encountered: 0x" + Integer.toHexString(mapColor));
+        // If it's not a known terrain color (and not transparent/void), return default
+        // Check alpha before warning: (mapColor >>> 24) != 0
+        if ((mapColor >>> 24) != 0 && mapColor != COLOR_VOID) {
+             // This will also catch unhandled spawn marker colors if MapLoader logic fails
+             log.error("Warning: Unknown terrain map color encountered: 0x" + Integer.toHexString(mapColor) + ". Returning VOID.");
         }
-        return VOID; // Default to VOID for unknown or out-of-bounds colors
+        return VOID; // Default to VOID for unknown colors or marker colors
     }
 
-    /**
-     * Creates a simple fallback sprite filled with a specific color.
-     * Used when the intended sprite fails to load.
-     */
+    /** Creates a simple fallback sprite */
     private static BufferedImage createDefaultSprite(int width, int height, int color) {
-        BufferedImage img = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        java.awt.Graphics2D g = img.createGraphics();
-        g.setColor(new java.awt.Color(color, true)); // Use ARGB color
+        BufferedImage img = new BufferedImage(Math.max(1, width), Math.max(1, height), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        g.setColor(new Color(color, true)); // Use ARGB color
         g.fillRect(0, 0, width, height);
         g.dispose();
         return img;
