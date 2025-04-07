@@ -1,5 +1,9 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.systems;
 
+import com.kindred.engine.entity.components.ColliderComponent;
+import com.kindred.engine.entity.components.PositionComponent;
+import com.kindred.engine.entity.components.VelocityComponent;
+import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.level.Level;
 
 /**

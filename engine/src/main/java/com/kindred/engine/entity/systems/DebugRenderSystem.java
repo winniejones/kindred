@@ -1,5 +1,8 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.systems;
 
+import com.kindred.engine.entity.components.ColliderComponent;
+import com.kindred.engine.entity.components.PositionComponent;
+import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.level.Level;
 import com.kindred.engine.render.Screen;
 
@@ -22,10 +25,8 @@ public class DebugRenderSystem {
             int hitboxX = col.getHitboxX(pos); // pos.x + col.offsetX
             int hitboxY = col.getHitboxY(pos); // pos.y + col.offsetY
 
-            if (pos != null && col != null) {
-                screen.drawRect(hitboxX, hitboxY, col.hitboxWidth, col.hitboxHeight, 0xFFFF00, true);
-                screen.fillRect(pos.x - 1, pos.y - 1, 3, 3, 0xFF0000, true);
-            }
+            screen.drawRect(hitboxX, hitboxY, col.hitboxWidth, col.hitboxHeight, 0xFFFF00, true);
+            screen.fillRect(pos.x - 1, pos.y - 1, 3, 3, 0xFF0000, true);
         }
 
         int camX = screen.xOffset;

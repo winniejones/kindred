@@ -1,4 +1,4 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.core;
 
 import java.util.HashMap;
 import java.util.HashSet;

@@ -1,5 +1,8 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.systems;
 
+import com.kindred.engine.entity.components.PositionComponent;
+import com.kindred.engine.entity.components.SpriteComponent;
+import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.render.Screen;
 
 public class RenderSystem {

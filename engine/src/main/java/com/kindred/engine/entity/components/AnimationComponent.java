@@ -1,4 +1,6 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.components;
+
+import com.kindred.engine.entity.core.Component;
 
 import java.awt.image.BufferedImage;
 
@@ -7,7 +9,7 @@ public class AnimationComponent implements Component {
     public int direction = 0; // 0: down, 1: left, 2: right, 3: up
     public int frame = 0;
     public int tick = 0;
-    public int frameDelay = 10;
+    public int frameDelay;
 
     public AnimationComponent(BufferedImage[][] frames, int frameDelay) {
         this.frames = frames;

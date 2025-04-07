@@ -1,6 +1,8 @@
 package com.kindred;
 
-import com.kindred.engine.entity.*;
+import com.kindred.engine.entity.components.*;
+import com.kindred.engine.entity.core.EntityManager;
+import com.kindred.engine.entity.systems.*;
 import com.kindred.engine.input.Keyboard;
 import com.kindred.engine.level.Level;
 import com.kindred.engine.level.MapLoader;
@@ -8,13 +10,10 @@ import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
 
 import javax.swing.*;
-import java.awt.Canvas;
-import java.awt.Dimension;
-import java.awt.Graphics;
+import java.awt.*;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
-import java.util.List;
 
 public class GameMain extends Canvas implements Runnable {
 
@@ -43,7 +42,6 @@ public class GameMain extends Canvas implements Runnable {
     private final PlayerInputSystem playerInputSystem;
     private final DebugRenderSystem debugRenderSystem;
 
-    private final int playerEntity;
     private int cameraEntity;
 
     private final Level level;
@@ -73,7 +71,7 @@ public class GameMain extends Canvas implements Runnable {
         debugRenderSystem = new DebugRenderSystem(entityManager, screen, level);
 
         // Create player entity with position and velocity
-        playerEntity = createPlayer();
+        int playerEntity = createPlayer();
         cameraEntity = createCamera();
 
     }
@@ -120,7 +118,7 @@ public class GameMain extends Canvas implements Runnable {
         }
         // Determine the initial sprite - use first down frame if loaded, otherwise get a placeholder
         BufferedImage initialSprite;
-        if (playerSpritesLoaded && walkFrames[0] != null && walkFrames[0][0] != null && walkFrames[0][0].getWidth() > 1) {
+        if (playerSpritesLoaded && walkFrames[0][0] != null && walkFrames[0][0].getWidth() > 1) {
             initialSprite = walkFrames[0][0]; // Default to first down frame
         } else {
             // If loading failed, get a placeholder from AssetLoader (which creates one internally)

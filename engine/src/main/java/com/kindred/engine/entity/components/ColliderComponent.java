@@ -1,4 +1,6 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.components;
+
+import com.kindred.engine.entity.core.Component;
 
 /**
  * Component storing collision hitbox dimensions for an entity.
@@ -8,8 +10,8 @@ public class ColliderComponent implements Component {
     public int hitboxWidth;
     public int hitboxHeight;
     // Optional: Add offsets if the hitbox isn't aligned with pos.x, pos.y
-    public int offsetX = 0;
-    public int offsetY = 0;
+    public int offsetX;
+    public int offsetY;
 
     /**
      * Constructor with explicit offset.

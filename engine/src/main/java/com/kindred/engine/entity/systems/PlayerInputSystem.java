@@ -1,5 +1,8 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.systems;
 
+import com.kindred.engine.entity.components.PlayerComponent;
+import com.kindred.engine.entity.components.VelocityComponent;
+import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.input.Keyboard;
 
 public class PlayerInputSystem {

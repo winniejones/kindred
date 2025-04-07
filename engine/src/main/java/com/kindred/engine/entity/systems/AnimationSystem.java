@@ -1,4 +1,9 @@
-package com.kindred.engine.entity;
+package com.kindred.engine.entity.systems;
+
+import com.kindred.engine.entity.components.AnimationComponent;
+import com.kindred.engine.entity.components.SpriteComponent;
+import com.kindred.engine.entity.components.VelocityComponent;
+import com.kindred.engine.entity.core.EntityManager;
 
 public class AnimationSystem {
 
