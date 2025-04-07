@@ -4,7 +4,8 @@ import com.kindred.engine.level.Level;
 import com.kindred.engine.render.Screen;
 
 public class CameraSystem {
-
+    private final int PLAYER_SPRITE_WIDTH = 32;
+    private final int PLAYER_SPRITE_HEIGHT = 32;
     private final EntityManager entityManager;
     private final Screen screen;
     private final Level level;
@@ -36,14 +37,10 @@ public class CameraSystem {
         // --- Calculate desired camera position (center player) ---
         // Note: playerPos.x/y is the top-left of the player entity by default.
         // If you want to center based on the player's visual center, add half player size.
-        // Example: int playerCenterX = playerPos.x + PLAYER_SPRITE_WIDTH / 2;
-        // Example: int playerCenterY = playerPos.y + PLAYER_SPRITE_HEIGHT / 2;
-        // int camX = playerCenterX - screen.width / 2;
-        // int camY = playerCenterY - screen.height / 2;
-
-        // Using player top-left for now as in original code:
-        int camX = playerPos.x - screen.width / 2;
-        int camY = playerPos.y - screen.height / 2;
+        int playerCenterX = playerPos.x + PLAYER_SPRITE_WIDTH / 2;
+        int playerCenterY = playerPos.y + PLAYER_SPRITE_HEIGHT / 2;
+        int camX = playerCenterX - screen.width / 2;
+        int camY = playerCenterY - screen.height / 2;
 
 
         // --- Clamp camera to level boundaries ---
