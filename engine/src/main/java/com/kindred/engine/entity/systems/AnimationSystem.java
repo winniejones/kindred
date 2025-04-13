@@ -15,7 +15,7 @@ public class AnimationSystem implements System {
     }
 
     @Override
-    public void update() {
+    public void update(float deltaTime) {
         for (int entity : entityManager.getEntitiesWith(AnimationComponent.class, SpriteComponent.class, VelocityComponent.class)) {
             AnimationComponent anim = entityManager.getComponent(entity, AnimationComponent.class);
             SpriteComponent sprite = entityManager.getComponent(entity, SpriteComponent.class);

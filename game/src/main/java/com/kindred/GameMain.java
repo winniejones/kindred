@@ -50,6 +50,7 @@ public class GameMain extends Canvas implements Runnable {
     private final PlayerInputSystem playerInputSystem;
     private final DebugRenderSystem debugRenderSystem;
     private final AISystem aiSystem;
+    private final CombatSystem combatSystem; // <<< Added CombatSystem instance
 
     // Entity IDs
     private int playerEntity = -1; // Initialize player entity ID to invalid (-1 indicates not spawned yet)
@@ -60,17 +61,23 @@ public class GameMain extends Canvas implements Runnable {
         setFocusable(true);
         requestFocus();
 
+        // --- Rendering Buffer Setup ---
         image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
+        // --- Core Component Initialization ---
         screen = new Screen(WIDTH, HEIGHT);
         keyboard = new Keyboard();
         addKeyListener(keyboard); // Attach keyboard listener to this canvas
 
         // --- Level Loading ---
         // MapLoader reads the image, creates Tiles, finds SpawnPoints, and returns the Level object
+        log.info("Loading level...");
         level = MapLoader.loadLevelFromImage("/assets/level/spawn_map.png", 16); // Ensure path and tileSize are correct
+        log.info("Level loading complete.");
 
+        // --- ECS and System Initialization ---
+        log.info("Initializing ECS and Systems...");
         entityManager = new EntityManager();
         // Pass necessary dependencies to each system's constructor
         movementSystem = new MovementSystem(entityManager);
@@ -81,6 +88,8 @@ public class GameMain extends Canvas implements Runnable {
         playerInputSystem = new PlayerInputSystem(entityManager, keyboard);
         debugRenderSystem = new DebugRenderSystem(entityManager, screen, level);
         aiSystem = new AISystem(entityManager);
+        combatSystem = new CombatSystem(entityManager); // <<< Instantiate CombatSystem
+        log.info("Systems initialized.");
 
         // --- Initial Entity Spawning ---
         // This method reads spawn points collected by MapLoader from the Level object
@@ -92,19 +101,13 @@ public class GameMain extends Canvas implements Runnable {
         // --- Post-Spawn Checks ---
         // Verify that the player was actually spawned from the map data
         if (playerEntity == -1) {
-            System.err.println("CRITICAL WARNING: Player entity was not created. No player spawn point found in map?");
-            // Consider adding fallback logic here: either throw an error or spawn player at a default safe location.
-            // Example fallback:
-            // System.out.println("Spawning player at default location (100, 100).");
-            // this.playerEntity = createPlayer(100, 100);
-            // if (this.playerEntity == -1) { // Check if fallback creation failed
-            //    throw new RuntimeException("Failed to create player entity even at default location!");
-            // }
+             log.error("CRITICAL: Player entity was not created. No player spawn point found in map? Exiting.");
+             // Handle this scenario - maybe throw exception or spawn default
+             throw new RuntimeException("Failed to create player entity - No spawn point found.");
         } else {
-            System.out.println("Player entity successfully created with ID: " + playerEntity);
-            // If CameraSystem needs the player ID explicitly set (instead of finding it):
-            // cameraSystem.setTarget(playerEntity);
+             log.info("Player entity successfully created with ID: {}", playerEntity);
         }
+        log.info("GameMain initialization complete.");
     }
 
     /**
@@ -116,7 +119,7 @@ public class GameMain extends Canvas implements Runnable {
         int tileSize = level.getTileSize();
         boolean playerSpawned = false; // Track if the single player has been spawned
 
-        System.out.println("Processing " + spawnPoints.size() + " spawn points...");
+        log.info("Processing {} spawn points...", spawnPoints.size());
 
         for (SpawnPoint sp : spawnPoints) {
             // Convert tile coordinates to center pixel coordinates for spawning
@@ -132,33 +135,33 @@ public class GameMain extends Canvas implements Runnable {
                         this.playerEntity = createPlayer(spawnX, spawnY);
                         playerSpawned = true; // Mark player as spawned
                     } else {
-                        // Log a warning if multiple player spawns are defined in the map
-                        log.error("Warning: Multiple player spawn points detected in map. Ignoring extra at tile (" + sp.getTileX() + "," + sp.getTileY() + ")");
+                        log.warn("Multiple player spawn points detected. Ignoring extra at tile ({}, {})", sp.getTileX(), sp.getTileY());
                     }
                     break;
                 case NPC_VILLAGER:
-                    createVillagerNPC(spawnX, spawnY); // Call factory method
+                    createVillagerNPC(spawnX, spawnY);
                     break;
                 case ENEMY_SLIME:
                     createBlondLong(spawnX, spawnY); // Call factory method
                     break;
-                // Add cases for other SpawnType enum values as you create them
                 default:
-                    log.error("Warning: Unknown spawn type encountered in map data: " + sp.getType());
+                    log.warn("Unknown spawn type encountered in map data: {}", sp.getType());
                     break;
             }
         }
 
         // Optional: Add a final check/warning if no player spawn was found after processing all points
         if (!playerSpawned) {
-            log.error("Warning: No PLAYER spawn point was found in the map file!");
+            log.warn("No PLAYER spawn point was found in the map file!");
             // The check in the constructor will handle the critical error or fallback logic.
         }
     }
 
 
+    // --- Entity Factory Methods ---
+
     private int createPlayer(int spawnX, int spawnY) {
-        log.info("Attempting to create Player at: ({}, {})", spawnX, spawnY);
+        log.debug("Creating Player at: ({}, {})", spawnX, spawnY);
         // --- Sprite loading ---
         String playerSheetPath = "/assets/sprites/player.png";
         BufferedImage[][] walkFrames = new BufferedImage[4][3]; // 4 directions, 3 frames each
@@ -167,9 +170,7 @@ public class GameMain extends Canvas implements Runnable {
         int framesPerDirection = 3;
         try {
             BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
-            // Basic check if sheet loaded and seems large enough
             if (sheet != null && sheet.getWidth() >= playerSpriteSize * 4 && sheet.getHeight() >= playerSpriteSize * 3) {
-                // Load sprites using nested loops (assuming Columns=Directions, Rows=Frames)
                 for (int frameRow = 0; frameRow < framesPerDirection; frameRow++) {
                     for (int dirCol = 0; dirCol < 4; dirCol++) { // Assuming 4 directions
                         // Get sprite using AssetLoader (handles bounds checks internally)
@@ -203,14 +204,14 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(entityId, new PlayerComponent());
         entityManager.addComponent(entityId, new ColliderComponent(15, 14, 8, 15));
         entityManager.addComponent(entityId, new HealthComponent(100,100)); // Example health
-
+        entityManager.addComponent(entityId, new AttackComponent(10f, 45f, 0.5f)); // Dmg=10, Range=45px, Cooldown=0.5s
 
         log.info("Player Entity Created with ID: {}", entityId);
         return entityId;
     }
 
     private int createVillagerNPC(int spawnX, int spawnY) {
-        log.info("Creating Villager NPC at: (" + spawnX + ", " + spawnY + ")");
+        log.debug("Creating Villager NPC at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
 
         // --- Core Components ---
@@ -265,7 +266,7 @@ public class GameMain extends Canvas implements Runnable {
     }
 
     private int createBlondLong(int spawnX, int spawnY) {
-        log.info("Creating Slime Enemy at: (" + spawnX + ", " + spawnY + ")");
+        log.debug("Creating Enemy at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
 
         // --- Graphics ---
@@ -301,7 +302,7 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(entityId, new EnemyComponent()); // Mark as Enemy
         entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 48f, 1.0f, 4.0f, 0.6f));
 
-        log.info("Slime Enemy Entity Created with ID: " + entityId);
+        log.debug("Slime Enemy Entity Created with ID: {}", entityId);
         return entityId;
     }
 
@@ -312,9 +313,8 @@ public class GameMain extends Canvas implements Runnable {
      */
     private int createCamera() {
         cameraEntity = entityManager.createEntity();
-        entityManager.addComponent(cameraEntity, new CameraComponent(0, 0));// Initial camera offset/position
-        // Add other camera components if needed (e.g., FollowTargetComponent)
-        log.info("Camera Entity Created with ID: " + cameraEntity); // Debug output
+        entityManager.addComponent(cameraEntity, new CameraComponent(0, 0));
+        log.debug("Camera Entity Created with ID: {}", cameraEntity);
         return cameraEntity;
     }
 
@@ -392,21 +392,18 @@ public class GameMain extends Canvas implements Runnable {
 
 
         // --- Update Systems in Order ---
-        playerInputSystem.update();
+        playerInputSystem.update(deltaTime);
         aiSystem.update(deltaTime); // Pass deltaTime to AI for timers
-        collisionSystem.update(); // Collision doesn't usually need deltaTime directly
-        movementSystem.update(); // Movement might use deltaTime if velocity is units/sec
-        cameraSystem.update(); // Camera smoothing might use deltaTime
-        animationSystem.update(); // Animation frame timing likely uses deltaTime
+        combatSystem.update(deltaTime); // Collision doesn't usually need deltaTime directly
+        collisionSystem.update(deltaTime); // Collision doesn't usually need deltaTime directly
+        movementSystem.update(deltaTime); // Movement might use deltaTime if velocity is units/sec
+        cameraSystem.update(deltaTime); // Camera smoothing might use deltaTime
+        animationSystem.update(deltaTime); // Animation frame timing likely uses deltaTime
     }
 
     private void render() {
         BufferStrategy bs = getBufferStrategy();
-        if (bs == null) {
-            createBufferStrategy(3);
-            return;
-        }
-
+        if (bs == null) { createBufferStrategy(3); return; }
         screen.clear();
 
         // Camera offset is now set internally by CameraSystem.update()

@@ -3,15 +3,16 @@ package com.kindred.engine.entity.systems;
 import com.kindred.engine.entity.components.PositionComponent;
 import com.kindred.engine.entity.components.VelocityComponent;
 import com.kindred.engine.entity.core.EntityManager;
+import com.kindred.engine.entity.core.System;
 
-public class MovementSystem {
+public class MovementSystem implements System {
     private final EntityManager entityManager;
 
     public MovementSystem(EntityManager entityManager) {
         this.entityManager = entityManager;
     }
 
-    public void update() {
+    public void update(float deltaTime) {
         for (int entity : entityManager.getEntitiesWith(PositionComponent.class, VelocityComponent.class)) {
             PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
             VelocityComponent vel = entityManager.getComponent(entity, VelocityComponent.class);

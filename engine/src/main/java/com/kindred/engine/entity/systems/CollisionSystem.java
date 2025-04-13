@@ -35,7 +35,7 @@ public class CollisionSystem implements System {
      * This should typically be called after input handling and before the MovementSystem.
      */
     @Override
-    public void update() {
+    public void update(float deltaTime) {
         int tileSize = level.getTileSize();
         if (tileSize <= 0) {
             log.error("CollisionSystem: Invalid tile size in Level. Skipping collision checks.");

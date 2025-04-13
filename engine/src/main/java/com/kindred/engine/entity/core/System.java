@@ -14,7 +14,7 @@ public interface System {
      * This allows for calculations that are independent of the frame rate
      * (e.g., movement speed, timers).
      */
-    void update();
+    void update(float deltaTime);
 
     // --- Optional Common Methods ---
     // You might add other methods here later if many systems need them,

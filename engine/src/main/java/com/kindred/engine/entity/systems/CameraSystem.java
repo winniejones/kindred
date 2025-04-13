@@ -30,7 +30,7 @@ public class CameraSystem implements System {
     }
 
     @Override
-    public void update() {
+    public void update(float deltaTime) {
         Integer playerEntity = entityManager.getFirstEntityWith(PlayerComponent.class, PositionComponent.class);
 
         if (playerEntity == null) return;

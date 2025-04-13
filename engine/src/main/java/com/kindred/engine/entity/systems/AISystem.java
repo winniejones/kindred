@@ -17,6 +17,7 @@ public class AISystem implements System {
     }
 
     // Assuming update takes a delta time in seconds for timer calculations
+    @Override
     public void update(float deltaTime) {
         // Get all entities that have the necessary components for wandering
         for (int entity : entityManager.getEntitiesWith(
@@ -74,13 +75,5 @@ public class AISystem implements System {
                     break;
             }
         }
-    }
-
-    // Overload update if your System interface doesn't use deltaTime
-    @Override // If implementing an interface without deltaTime
-    public void update() {
-        // Default delta time if not provided (e.g., assuming 60 UPS)
-        // This is less accurate than using a real delta time from the game loop
-        update(1.0f / 60.0f);
     }
 }
