@@ -4,11 +4,19 @@ import com.kindred.engine.entity.core.Component;
 
 import java.util.Random;
 
+/**
+ * Component holding state for simple AI behavior including wandering and attacking.
+ * Entities with this component will randomly pick points within a radius
+ * of their starting position and move towards them, pausing between movements.
+ * If a player comes within aggroRadius, they will switch to ATTACKING state.
+ */
 public class WanderAIComponent implements Component {
-    /** Possible states for the wandering AI. */
+
+    /** Possible states for the AI. */
     public enum AIState {
         IDLE,      // Waiting before deciding where to move next
-        WANDERING  // Moving towards the target destination
+        WANDERING, // Moving towards the random wander target destination
+        ATTACKING  // Detected player, moving towards/attacking player
     }
 
     // --- Configuration ---
@@ -22,22 +30,23 @@ public class WanderAIComponent implements Component {
     public final float minIdleTime;
     /** Maximum time (in seconds) to stay idle before wandering again. */
     public final float maxIdleTime;
-    /** Movement speed for wandering. */
-    public final float wanderSpeed;
+    /** Movement speed for wandering/attacking (can be overridden by specific states). */
+    public final float moveSpeed;
+    /** Distance (in pixels) within which the AI will detect and attack the player. */
+    public final float aggroRadius;
 
 
     // --- State Variables ---
-    /** Current state of the AI (IDLE or WANDERING). */
+    /** Current state of the AI (IDLE, WANDERING, or ATTACKING). */
     public AIState currentState;
     /** Timer counting down during the IDLE state (in seconds). */
     public float idleTimer;
-    /** The current target X coordinate the entity is moving towards. */
+    /** The current target X coordinate (either wander target or player position). */
     public int targetX;
-    /** The current target Y coordinate the entity is moving towards. */
+    /** The current target Y coordinate (either wander target or player position). */
     public int targetY;
 
     // Random number generator for picking targets and idle times
-    // Making it non-static ensures different entities don't always sync up
     private transient Random random = new Random(); // transient: prevent serialization if needed
 
     /**
@@ -48,10 +57,11 @@ public class WanderAIComponent implements Component {
      * @param wanderRadius The maximum distance from the start point to wander.
      * @param minIdleTime Minimum idle time between wanders (seconds).
      * @param maxIdleTime Maximum idle time between wanders (seconds).
-     * @param wanderSpeed The speed at which the entity moves when wandering.
+     * @param moveSpeed The speed at which the entity moves when wandering or attacking.
+     * @param aggroRadius Distance within which to detect and attack the player.
      */
-    public WanderAIComponent(int startX, int startY, float wanderRadius, float minIdleTime, float maxIdleTime, float wanderSpeed) {
-        if (wanderRadius <= 0 || minIdleTime < 0 || maxIdleTime < minIdleTime || wanderSpeed <= 0) {
+    public WanderAIComponent(int startX, int startY, float wanderRadius, float minIdleTime, float maxIdleTime, float moveSpeed, float aggroRadius) {
+        if (wanderRadius <= 0 || minIdleTime < 0 || maxIdleTime < minIdleTime || moveSpeed <= 0 || aggroRadius <= 0) {
             throw new IllegalArgumentException("Invalid parameters for WanderAIComponent.");
         }
         this.startX = startX;
@@ -59,7 +69,8 @@ public class WanderAIComponent implements Component {
         this.wanderRadius = wanderRadius;
         this.minIdleTime = minIdleTime;
         this.maxIdleTime = maxIdleTime;
-        this.wanderSpeed = wanderSpeed;
+        this.moveSpeed = moveSpeed; // Renamed from wanderSpeed for clarity
+        this.aggroRadius = aggroRadius;
 
         // Initialize state
         this.currentState = AIState.IDLE;
@@ -71,22 +82,18 @@ public class WanderAIComponent implements Component {
 
     /** Resets the idle timer to a random duration within the defined min/max. */
     public void resetIdleTimer() {
-        if (random == null) random = new Random(); // Re-initialize if deserialized
+         if (random == null) random = new Random(); // Re-initialize if deserialized
         this.idleTimer = minIdleTime + random.nextFloat() * (maxIdleTime - minIdleTime);
-        // System.out.println("Entity reset idle timer to: " + idleTimer); // Debug
     }
 
-    /** Picks a new random target position within the wander radius. */
-    public void pickNewWanderTarget() {
-        if (random == null) random = new Random();
+     /** Picks a new random target position within the wander radius. */
+     public void pickNewWanderTarget() {
+         if (random == null) random = new Random();
+         double angle = random.nextDouble() * 2.0 * Math.PI;
+         double distance = random.nextDouble() * wanderRadius;
+         this.targetX = startX + (int)(Math.cos(angle) * distance);
+         this.targetY = startY + (int)(Math.sin(angle) * distance);
+     }
 
-        // Generate random angle and distance
-        double angle = random.nextDouble() * 2.0 * Math.PI; // 0 to 2*PI
-        double distance = random.nextDouble() * wanderRadius; // 0 to wanderRadius
-
-        // Calculate new target relative to start position
-        this.targetX = startX + (int)(Math.cos(angle) * distance);
-        this.targetY = startY + (int)(Math.sin(angle) * distance);
-        // System.out.println("Entity picked new target: (" + targetX + ", " + targetY + ")"); // Debug
-    }
+    // Note: Getters/Setters can be added if direct field access is not preferred.
 }
