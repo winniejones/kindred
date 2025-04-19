@@ -47,7 +47,7 @@ public class MapLoader {
                     tileToSet = Tile.FLOOR; // Place floor tile
                     handled = true;
                 } else if (pixelColor == Tile.COLOR_ENEMY_SPAWN) {
-                    level.addSpawnPoint(new SpawnPoint(x, y, SpawnPoint.SpawnType.ENEMY_SLIME)); // Example type
+                    level.addSpawnPoint(new SpawnPoint(x, y, SpawnPoint.SpawnType.ENEMY_DEIDARA)); // Example type
                     tileToSet = Tile.FLOOR; // Place floor tile
                     handled = true;
                 }

@@ -1,6 +1,7 @@
 package com.kindred.engine.entity.systems;
 
 import com.kindred.engine.entity.components.ColliderComponent;
+import com.kindred.engine.entity.components.DeadComponent;
 import com.kindred.engine.entity.components.PositionComponent;
 import com.kindred.engine.entity.components.VelocityComponent;
 import com.kindred.engine.entity.core.EntityManager;
@@ -47,20 +48,21 @@ public class CollisionSystem implements System {
                 PositionComponent.class,
                 VelocityComponent.class,
                 ColliderComponent.class)) {
+            if (entityManager.hasComponent(entity, DeadComponent.class)) continue;
 
             PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
             VelocityComponent vel = entityManager.getComponent(entity, VelocityComponent.class);
             ColliderComponent col = entityManager.getComponent(entity, ColliderComponent.class);
+            // Check components exist (safeguard)
+            if (pos == null || vel == null || col == null) continue;
 
             // Get the intended velocity for this frame (usually set by input or AI systems)
             // Note: We directly modify the vel component based on collisions.
             int currentVx = vel.vx;
             int currentVy = vel.vy;
-
             // Store the final velocity after collision checks
             int finalVx = currentVx;
             int finalVy = currentVy;
-
             // --- Calculate current hitbox top-left position using offsets ---
             // Use the helper methods from ColliderComponent for clarity
             int hitboxX = col.getHitboxX(pos); // pos.x + col.offsetX

@@ -5,7 +5,7 @@ public class SpawnPoint {
     public enum SpawnType {
         PLAYER,
         NPC_VILLAGER,
-        ENEMY_SLIME
+        ENEMY_DEIDARA
         // Add other types as needed
     }
 

@@ -52,6 +52,7 @@ public class AISystem implements System {
         {
             // Skip player if player somehow has WanderAIComponent
             if (entity == playerEntityId) continue;
+            if(entityManager.hasComponent(entity, DeadComponent.class)) continue;
 
             PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
             VelocityComponent vel = entityManager.getComponent(entity, VelocityComponent.class);

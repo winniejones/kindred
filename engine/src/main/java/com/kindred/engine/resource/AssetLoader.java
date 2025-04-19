@@ -120,7 +120,7 @@ public class AssetLoader {
 
         // loadImage returns a placeholder on failure, check dimensions
         if (sheet == null || sheet.getWidth() <= 1 || sheet.getHeight() <= 1) {
-            System.err.println("AssetLoader Error: Failed to load sheet or sheet is placeholder for animation: " + sheetPath);
+            log.error("AssetLoader Error: Failed to load sheet or sheet is placeholder for animation: {}", sheetPath);
             return frames; // Return empty list if sheet failed to load
         }
 

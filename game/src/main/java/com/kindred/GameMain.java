@@ -19,29 +19,32 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.List;
-import java.util.Arrays;
 
 @Slf4j
 public class GameMain extends Canvas implements Runnable {
 
+    // --- Member Variables ---
     private JFrame frame;
     private Thread gameThread;
     private boolean running = false;
 
+    // Game Window Constants
     public static final int WIDTH = 800;
     public static final int HEIGHT = 600;
     public static final int SCALE = 2;
     public static final String TITLE = "Kindred";
 
+    // Rendering Buffer
     private final BufferedImage image;
     private final int[] pixels;
 
+    // Core Engine Components
     private final Screen screen;
     private final Keyboard keyboard;
     private final EntityManager entityManager;
     private final Level level;
 
-    // Systems
+    // Systems - Declare all systems used
     private final MovementSystem movementSystem;
     private final AnimationSystem animationSystem;
     private final RenderSystem renderSystem;
@@ -50,17 +53,25 @@ public class GameMain extends Canvas implements Runnable {
     private final PlayerInputSystem playerInputSystem;
     private final DebugRenderSystem debugRenderSystem;
     private final AISystem aiSystem;
-    private final CombatSystem combatSystem; // <<< Added CombatSystem instance
+    private final CombatSystem combatSystem;
+    private final VisualEffectsSystem visualEffectsSystem;
+    private final LifetimeSystem lifetimeSystem;
+    private final ParticlePhysicsSystem particlePhysicsSystem;
+    private final CorpseDecaySystem corpseDecaySystem; // <<< Added CorpseDecaySystem
 
     // Entity IDs
     private int playerEntity = -1; // Initialize player entity ID to invalid (-1 indicates not spawned yet)
     private int cameraEntity;      // ID for the camera entity (if used)
 
+    /**
+     * GameMain Constructor: Initializes the game window, loads assets,
+     * creates the level, initializes ECS and systems, and spawns initial entities.
+     */
     public GameMain() {
         // --- Window Setup ---
         setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
-        setFocusable(true);
-        requestFocus();
+        setFocusable(true); // Allow canvas to receive keyboard input
+        requestFocus(); // Request focus immediately
 
         // --- Rendering Buffer Setup ---
         image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
@@ -79,6 +90,7 @@ public class GameMain extends Canvas implements Runnable {
         // --- ECS and System Initialization ---
         log.info("Initializing ECS and Systems...");
         entityManager = new EntityManager();
+        // Pass necessary dependencies to each system's constructor
         movementSystem = new MovementSystem(entityManager);
         animationSystem = new AnimationSystem(entityManager);
         renderSystem = new RenderSystem(entityManager, screen);
@@ -88,20 +100,28 @@ public class GameMain extends Canvas implements Runnable {
         debugRenderSystem = new DebugRenderSystem(entityManager, screen, level);
         aiSystem = new AISystem(entityManager);
         combatSystem = new CombatSystem(entityManager);
+        visualEffectsSystem = new VisualEffectsSystem(entityManager);
+        lifetimeSystem = new LifetimeSystem(entityManager);
+        particlePhysicsSystem = new ParticlePhysicsSystem(entityManager);
+        corpseDecaySystem = new CorpseDecaySystem(entityManager);
         log.info("Systems initialized.");
 
         // --- Initial Entity Spawning ---
         spawnEntitiesFromMap();
 
-        // Create camera entity
+        // Create camera entity (its logic might be simple or complex depending on CameraSystem)
         cameraEntity = createCamera();
 
         // --- Post-Spawn Checks ---
+        // Verify that the player was actually spawned from the map data
         if (playerEntity == -1) {
              log.error("CRITICAL: Player entity was not created. No player spawn point found in map? Exiting.");
+             // Handle this scenario - maybe throw exception or spawn default
              throw new RuntimeException("Failed to create player entity - No spawn point found.");
         } else {
              log.info("Player entity successfully created with ID: {}", playerEntity);
+             // If CameraSystem needs the player ID explicitly set (instead of finding it):
+             // cameraSystem.setTarget(playerEntity);
         }
         log.info("GameMain initialization complete.");
     }
@@ -130,8 +150,8 @@ public class GameMain extends Canvas implements Runnable {
                 case NPC_VILLAGER:
                     createVillagerNPC(spawnX, spawnY);
                     break;
-                case ENEMY_SLIME:
-                    createBlondLong(spawnX, spawnY);
+                case ENEMY_DEIDARA:
+                    createEnemyDeidara(spawnX, spawnY);
                     break;
                 default:
                     log.warn("Unknown spawn type encountered in map data: {}", sp.getType());
@@ -150,12 +170,12 @@ public class GameMain extends Canvas implements Runnable {
     private int createPlayer(int spawnX, int spawnY) {
         log.debug("Creating Player at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
-        // --- Graphics ---
-        String playerSheetPath = "/assets/sprites/player.png";
-        BufferedImage[][] walkFrames = new BufferedImage[4][3]; // 4 directions, 3 frames each
+        // Graphics
+        String playerSheetPath = "/assets/sprites/player.png"; // TODO: Verify path
+        BufferedImage[][] walkFrames = new BufferedImage[4][3]; // [Direction][Frame]
         boolean playerSpritesLoaded = false;
-        int playerSpriteSize = 32;
-        int framesPerDirection = 3;
+        int playerSpriteSize = 32; // TODO: Verify size
+        int framesPerDirection = 3; // TODO: Verify frame count
         try {
             BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
             if (sheet != null && sheet.getWidth() >= playerSpriteSize * 4 && sheet.getHeight() >= playerSpriteSize * 3) {
@@ -168,7 +188,12 @@ public class GameMain extends Canvas implements Runnable {
             } else {
                 if (sheet != null) { // Sheet loaded but was too small
                     log.error("Player spritesheet is too small (%dx%d) for expected layout (4x%d sprites of size %dx%d)%n",
-                            sheet.getWidth(), sheet.getHeight(), framesPerDirection, playerSpriteSize, playerSpriteSize);
+                        sheet.getWidth(),
+                        sheet.getHeight(),
+                        framesPerDirection,
+                        playerSpriteSize,
+                        playerSpriteSize
+                    );
                 } // Error message for sheet == null is handled by loadImage
             }
         } catch (Exception e) {
@@ -176,20 +201,20 @@ public class GameMain extends Canvas implements Runnable {
         }
         // Determine the initial sprite - use first down frame if loaded, otherwise get a placeholder
         BufferedImage initialSprite;
-        if (playerSpritesLoaded && walkFrames[0][0] != null && walkFrames[0][0].getWidth() > 1) {
+        if (playerSpritesLoaded && walkFrames[0] != null && walkFrames[0].length > 0 && walkFrames[0][0] != null && walkFrames[0][0].getWidth() > 1) {
             initialSprite = walkFrames[0][0];
         } else {
-            log.error("Using placeholder for initial player sprite.");
+            log.warn("Using placeholder for initial player sprite.");
             initialSprite = AssetLoader.createPlaceholderImage(playerSpriteSize, playerSpriteSize); // Use placeholder creator
         }
-
+        // Components
         entityManager.addComponent(entityId, new PositionComponent(spawnX, spawnY));
         entityManager.addComponent(entityId, new VelocityComponent(0, 0));
         entityManager.addComponent(entityId, new SpriteComponent(initialSprite));
         entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 10));
         entityManager.addComponent(entityId, new PlayerComponent());
         entityManager.addComponent(entityId, new ColliderComponent(15, 14, 8, 15));
-        entityManager.addComponent(entityId, new HealthComponent(100,100));
+        entityManager.addComponent(entityId, new HealthComponent(100));
         entityManager.addComponent(entityId, new AttackComponent(10f, 45f, 0.5f)); // Dmg=10, Range=45px, Cooldown=0.5s
         log.info("Player Entity Created with ID: {}", entityId);
         return entityId;
@@ -210,20 +235,18 @@ public class GameMain extends Canvas implements Runnable {
             List<BufferedImage> rightFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 2, framesPerDir, spriteSize, spriteSize, true);
             List<BufferedImage> upFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 3, framesPerDir, spriteSize, spriteSize, true);
 
-            if (!downFrames.isEmpty()) { // Basic check if loading worked
-                walkFrames[0] = downFrames.toArray(new BufferedImage[0]);
-                walkFrames[1] = leftFrames.toArray(new BufferedImage[0]);
-                walkFrames[2] = rightFrames.toArray(new BufferedImage[0]);
-                walkFrames[3] = upFrames.toArray(new BufferedImage[0]);
-                initialSprite = walkFrames[0][0]; // Use first down frame
+            if (!downFrames.isEmpty()) {
+                 walkFrames[0] = downFrames.toArray(new BufferedImage[0]);
+                 walkFrames[1] = leftFrames.toArray(new BufferedImage[0]);
+                 walkFrames[2] = rightFrames.toArray(new BufferedImage[0]);
+                 walkFrames[3] = upFrames.toArray(new BufferedImage[0]);
+                 initialSprite = walkFrames[0][0];
             }
         } catch (Exception e) {
-            log.error("Error loading villager sprites: " + e.getMessage());
+            log.error("Error loading villager sprites", e);
         }
         if (initialSprite == null) {
-            initialSprite = AssetLoader.loadImage(sheetPath);
-            if (initialSprite == null || initialSprite.getWidth() <= 1)
-                initialSprite = new BufferedImage(spriteSize, spriteSize, BufferedImage.TYPE_INT_ARGB); // Ultimate fallback
+            initialSprite = AssetLoader.createPlaceholderImage(spriteSize, spriteSize);
         }
         // --- Core Components ---
         entityManager.addComponent(entityId, new PositionComponent(spawnX, spawnY));
@@ -232,30 +255,33 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 15));
         entityManager.addComponent(entityId, new ColliderComponent(20, 28, 6, 4));
         // --- Gameplay Components ---
-        entityManager.addComponent(entityId, new HealthComponent(100, 100));
+        entityManager.addComponent(entityId, new HealthComponent(100));
         entityManager.addComponent(entityId, new NPCComponent());
-        // Add aggro radius to WanderAIComponent
         entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 64f, 3.0f, 8.0f, 0.8f, 100f)); // Added aggroRadius=100
         log.debug("Villager NPC Entity Created with ID: {}", entityId);
         return entityId;
     }
 
-    private int createBlondLong(int spawnX, int spawnY) {
+    private int createEnemyDeidara(int spawnX, int spawnY) {
         log.debug("Creating Enemy at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
         // --- Graphics ---
-        String sheetPath = "/assets/sprites/blondLong.png";
+        String sheetPath = "/assets/sprites/deidara.png";
         int spriteSize = 32;
         int framesPerDir = 2;
         BufferedImage[][] walkFrames = new BufferedImage[4][]; // Reuse structure? Or maybe slime only hops (1 anim)?
         BufferedImage initialSprite = null;
         try {
-            List<BufferedImage> hopFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 0, framesPerDir, spriteSize, spriteSize, true);
-            if (!hopFrames.isEmpty()) {
-                walkFrames[0] = hopFrames.toArray(new BufferedImage[0]);
-                walkFrames[1] = walkFrames[0];
-                walkFrames[2] = walkFrames[0];
-                walkFrames[3] = walkFrames[0];
+            List<BufferedImage> downFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 0, framesPerDir, spriteSize, spriteSize, true);
+            List<BufferedImage> leftFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 1, framesPerDir, spriteSize, spriteSize, true);
+            List<BufferedImage> rightFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 2, framesPerDir, spriteSize, spriteSize, true);
+            List<BufferedImage> upFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 3, framesPerDir, spriteSize, spriteSize, true);
+
+            if (!downFrames.isEmpty()) {
+                walkFrames[0] = downFrames.toArray(new BufferedImage[0]);
+                walkFrames[1] = leftFrames.toArray(new BufferedImage[0]);
+                walkFrames[2] = rightFrames.toArray(new BufferedImage[0]);
+                walkFrames[3] = upFrames.toArray(new BufferedImage[0]);
                 initialSprite = walkFrames[0][0];
             }
         } catch (Exception e) {
@@ -270,11 +296,9 @@ public class GameMain extends Canvas implements Runnable {
         entityManager.addComponent(entityId, new SpriteComponent(initialSprite));
         entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 20));
         entityManager.addComponent(entityId, new ColliderComponent(24, 16, 4, 16));
-        entityManager.addComponent(entityId, new HealthComponent(30, 30));
+        entityManager.addComponent(entityId, new HealthComponent(30));
         entityManager.addComponent(entityId, new EnemyComponent());
-        // <<< Add AttackComponent to Slime >>>
         entityManager.addComponent(entityId, new AttackComponent(5f, 35f, 1.5f)); // Dmg=5, Range=35px, Cooldown=1.5s
-        // <<< Add aggro radius to WanderAIComponent >>>
         entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 48f, 1.0f, 4.0f, 0.6f, 120f)); // Added aggroRadius=120
 
         log.debug("Slime Enemy Entity Created with ID: {}", entityId);
@@ -293,24 +317,32 @@ public class GameMain extends Canvas implements Runnable {
         return cameraEntity;
     }
 
+    // --- Game Loop and Core Methods ---
+
+    /** Starts the game thread. */
     public synchronized void start() {
         if (running) return;
         running = true;
         gameThread = new Thread(this, "GameThread");
         gameThread.start();
+        log.info("Game thread started.");
     }
 
+    /** Stops the game thread gracefully. */
     public synchronized void stop() {
         if (!running) return;
         running = false;
         try {
+            log.info("Attempting to stop game thread...");
             gameThread.join(); // Wait for the thread to finish
+            log.info("Game thread stopped.");
         } catch (InterruptedException e) {
-            log.error(e.getMessage(), e); // Log interruption error
-            Thread.currentThread().interrupt(); // Re-interrupt the current thread
+            log.error("Error stopping game thread", e);
+            Thread.currentThread().interrupt();
         }
     }
 
+    /** Main game loop logic (fixed time step). */
     @Override
     public void run() {
         long lastTime = System.nanoTime();
@@ -318,27 +350,40 @@ public class GameMain extends Canvas implements Runnable {
         double delta = 0;
         long timer = System.currentTimeMillis();
         int frames = 0, updates = 0;
+        log.info("Game loop starting...");
 
         while (running) {
             long now = System.nanoTime();
             long elapsed = now - lastTime;
+            // Prevent spiral of death if lagging badly
+            if (elapsed < 0) elapsed = 0;
+            if (elapsed > nsPerUpdate * 10) elapsed = (long)(nsPerUpdate * 10); // Cap max elapsed time
             lastTime = now;
             delta += elapsed / nsPerUpdate;
 
-            boolean shouldRender = false; // Only render if an update happened
+            boolean updated = false; // Track if any updates happened
 
             // Process updates based on elapsed time
-            while (delta >= 1) {
+            // Limit updates per frame to prevent potential freezes if lagging severely
+            int maxUpdatesPerFrame = 5;
+            int updatesThisCycle = 0;
+            while (delta >= 1 && updatesThisCycle < maxUpdatesPerFrame) {
                 // Calculate deltaTime in seconds for this update tick
                 float deltaTime = (float) nsPerUpdate / 1_000_000_000.0f;
                 update(deltaTime); // Pass delta time to update logic
                 updates++;
                 delta--;
-                shouldRender = true; // Render after updates
+                updated = true; // Mark that an update occurred
+                updatesThisCycle++;
+            }
+            // If loop exited due to maxUpdates, reset delta partially to avoid losing time entirely
+            if (updatesThisCycle == maxUpdatesPerFrame && delta > 1) {
+                 log.warn("Falling behind! Skipped {} updates.", (int)delta);
+                 delta = 1; // Allow at least one update next cycle if still lagging
             }
 
             // Render if an update occurred (or based on separate rendering timer if needed)
-            if (shouldRender) {
+            if (updated) {
                 render();
                 frames++;
             } else {
@@ -350,7 +395,10 @@ public class GameMain extends Canvas implements Runnable {
                 }
             }
 
+
+            // Update FPS/UPS counter every second
             if (System.currentTimeMillis() - timer >= 1000) {
+                log.debug("UPS: {}, FPS: {}", updates, frames); // Log FPS/UPS
                 if (frame != null) {
                     frame.setTitle(TITLE + " | UPS: " + updates + ", FPS: " + frames);
                 }
@@ -362,24 +410,46 @@ public class GameMain extends Canvas implements Runnable {
         // Consider calling a cleanup method here if needed before exit
     }
 
+    /**
+     * Updates all game logic and systems for one tick.
+     * @param deltaTime Time elapsed since the last update in seconds.
+     */
     private void update(float deltaTime) {
         keyboard.update();
         // --- Update Systems in Order ---
         playerInputSystem.update(deltaTime);
         aiSystem.update(deltaTime); // AI now handles attacks
         combatSystem.update(deltaTime);
+        particlePhysicsSystem.update(deltaTime);
         collisionSystem.update(deltaTime);
+        // TODO: Add Entity-vs-Entity collision resolution system here?
         movementSystem.update(deltaTime);
+        lifetimeSystem.update(deltaTime);    // Update particle lifetimes, destroy expired entities
+        visualEffectsSystem.update(deltaTime); // Update flash timers for TookDamageComponent
+        corpseDecaySystem.update(deltaTime);
         cameraSystem.update(deltaTime);
         animationSystem.update(deltaTime);
     }
 
+    /** Renders the current game state. */
     private void render() {
         BufferStrategy bs = getBufferStrategy();
-        if (bs == null) { createBufferStrategy(3); return; }
-        screen.clear();
+        if (bs == null) {
+            try {
+                createBufferStrategy(3); // Use triple buffering
+            } catch(IllegalStateException e) {
+                log.error("Error creating BufferStrategy", e);
+                // Handle error - maybe stop game loop?
+                running = false;
+                return;
+            }
+            return; // Exit render call for this frame, will try again next frame
+        }
 
-        // Camera offset is now set internally by CameraSystem.update()
+        // Prepare screen for drawing
+        screen.clear(); // Clear the pixel buffer
+
+        // Camera offset is set internally by CameraSystem.update() called in update()
 
         // Render Tiles
         level.render(screen);

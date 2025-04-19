@@ -98,6 +98,8 @@ public class Screen {
         }
     }
     public void drawSpriteWithAlpha(int xp, int yp, BufferedImage sprite) {
+        if (sprite == null) return;
+
         xp -= xOffset;
         yp -= yOffset;
         for (int y = 0; y < sprite.getHeight(); y++) {
@@ -114,6 +116,8 @@ public class Screen {
         }
     }
     public void drawSpriteWithColorKey(int xp, int yp, BufferedImage sprite, int colorKey) {
+        if (sprite == null) return; // Don't draw if sprite is null
+
         xp -= xOffset;
         yp -= yOffset;
         for (int y = 0; y < sprite.getHeight(); y++) {
