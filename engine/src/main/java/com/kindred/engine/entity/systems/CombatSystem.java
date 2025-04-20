@@ -3,6 +3,7 @@ package com.kindred.engine.entity.systems;
 import com.kindred.engine.entity.components.*;
 import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.entity.core.System;
+import com.kindred.engine.resource.AssetLoader;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.image.BufferedImage;
@@ -18,6 +19,9 @@ public class CombatSystem implements System {
     private static final float HIT_FLASH_DURATION = 0.15f;
     private static final float CORPSE_LIFETIME = 10.0f; // How long corpses last
     private final Random random = new Random();
+
+    // Corpse Sprites (ensure loaded)
+    private static BufferedImage deidaraCorpseSprite = AssetLoader.loadImage("/assets/sprites/decaying_deidara_corpse.png");
 
     public CombatSystem(EntityManager entityManager) {
         if (entityManager == null) {
@@ -40,7 +44,6 @@ public class CombatSystem implements System {
                 }
             }
         }
-
         // --- 2. Process Attack Actions ---
         List<Integer> attackers = new ArrayList<>(entityManager.getEntitiesWith(AttackActionComponent.class));
         for (int attackerId : attackers) {
@@ -103,8 +106,9 @@ public class CombatSystem implements System {
                     // Spawn Hit Particles
                     int hitX = targetPos.x + targetCollider.offsetX + targetCollider.hitboxWidth / 2;
                     int hitY = targetPos.y + targetCollider.offsetY + targetCollider.hitboxHeight / 2;
+                    int particleCount = 7 + random.nextInt(6);
                     // <<< Pass hit location to spawn method >>>
-                    spawnHitParticles(hitX, hitY, 5 + random.nextInt(6));
+                    spawnHitParticles(hitX, hitY, attackerPos.x, attackerPos.y, particleCount);
 
                     // --- Check for death ---
                     if (targetHealth.currentHealth <= 0 && !entityManager.hasComponent(targetId, DeadComponent.class)) {
@@ -157,43 +161,84 @@ public class CombatSystem implements System {
         } // End attacker loop
     } // End update()
 
-    /**
-     * Helper method to spawn multiple particle entities at a location.
-     * Creates particles with Position, Velocity, Particle, Lifetime, and ParticlePhysics components.
-     * @param x Center X coordinate for particle spawn.
-     * @param y Center Y coordinate for particle spawn.
-     * @param count Number of particles to spawn.
-     */
-    private void spawnHitParticles(int x, int y, int count) {
-        log.trace("Spawning {} particles at ({}, {})", count, x, y);
+    private void spawnHitParticles(int hitX, int hitY, int attackerX, int attackerY, int count) {
+        log.trace("Spawning {} particles at ({}, {}) away from ({}, {})", count, hitX, hitY, attackerX, attackerY);
         int particleColor = 0xFFFF2222; // Reddish
-        float lifetime = 0.3f + random.nextFloat() * 0.4f; // Lifetime 0.3 - 0.7 seconds
-        float maxInitialSpeed = 80.0f; // Max initial speed in pixels/sec
-        float initialZ = 2.0f; // Spawn slightly above ground
+        float lifetime = 3.3f + random.nextFloat() * 0.4f; // Lifetime 0.3 - 0.7 seconds
+        // float maxInitialSpeed = 80.0f; // Max initial speed in pixels/sec (Used for 'splash' version)
+        // float initialZ = 2.0f + random.nextFloat() * 2.0f; // Start slightly above ground (Matches old zz = random.nextFloat()+2.0)
+        // float maxInitialVZ = 120.0f; // Max initial upward velocity pixels/sec (Used for 'splash' version)
+
+        float minSpeed = 40.0f; // Min initial speed pixels/sec
+        float maxSpeed = 100.0f; // Max initial speed pixels/sec
+        float initialZ = 2.0f + random.nextFloat() * 2.0f;
         float maxInitialVZ = 120.0f; // Max initial upward velocity pixels/sec
+        float spreadAngle = (float)Math.PI / 2.0f; // Spread angle (e.g., 90 degrees total)
+
+        // --- Calculate base direction away from attacker ---
+        float dirX = hitX - attackerX;
+        float dirY = hitY - attackerY;
+        float len = (float) Math.sqrt(dirX * dirX + dirY * dirY);
+
+        // Handle case where attacker and target are at the same spot
+        if (len == 0) {
+            dirX = 1.0f; // Default to moving right
+            dirY = 0.0f;
+            len = 1.0f;
+        }
+        // Normalize base direction
+        float baseNormX = dirX / len;
+        float baseNormY = dirY / len;
 
         for (int i = 0; i < count; i++) {
             int particleEntity = entityManager.createEntity();
             int particleSize = 1 + random.nextInt(3); // Size 1, 2 or 3
 
-            entityManager.addComponent(particleEntity, new PositionComponent(x + random.nextInt(5)-2, y + random.nextInt(5)-2)); // Position
+            entityManager.addComponent(particleEntity, new PositionComponent(hitX + random.nextInt(5)-2, hitY + random.nextInt(5)-2)); // Position near hit
 
-            double angle = random.nextDouble() * 2.0 * Math.PI; // Velocity
-            float speed = random.nextFloat() * maxInitialSpeed;
-            int vx = (int) (Math.cos(angle) * speed);
-            int vy = (int) (Math.sin(angle) * speed);
+            // --- Initial Velocity ---
+            // Option 1: Current "Splash" (Random outward direction/speed + upward pop)
+            // double angle = random.nextDouble() * 2.0 * Math.PI;
+            // float speed = random.nextFloat() * maxInitialSpeed;
+            // int vx = (int) (Math.cos(angle) * speed);
+            // int vy = (int) (Math.sin(angle) * speed);
+            // float vz = random.nextFloat() * maxInitialVZ; // Initial upward velocity
+
+            // Option 2: Closer to Old Code (Gaussian XY, No initial VZ)
+            // double initialSpeedFactor = 3.0; // Adjust multiplier for Gaussian result
+            // int vx = (int)(random.nextGaussian() * initialSpeedFactor);
+            // int vy = (int)(random.nextGaussian() * initialSpeedFactor);
+            // float vz = 0; // Old code didn't have initial Z velocity
+
+            float angleOffset = (random.nextFloat() - 0.5f) * spreadAngle; // Random angle within +/- spread/2
+            float cosA = (float) Math.cos(angleOffset);
+            float sinA = (float) Math.sin(angleOffset);
+            // Rotate base direction vector
+            float particleDirX = baseNormX * cosA - baseNormY * sinA;
+            float particleDirY = baseNormX * sinA + baseNormY * cosA;
+            // (No need to re-normalize if just rotating unit vector)
+
+            // 2. Assign random speed
+            double speed = 4.0;
+
+            // 3. Calculate final vx, vy
+            int vx = (int) (particleDirX * speed);
+            int vy = (int) (particleDirY * speed);
+
+            // 4. Assign random upward vz
+            float vz = 0;
+
             entityManager.addComponent(particleEntity, new VelocityComponent(vx, vy));
+            // ----------------------
 
             entityManager.addComponent(particleEntity, new ParticleComponent(particleColor, particleSize)); // Visuals
             entityManager.addComponent(particleEntity, new LifetimeComponent(lifetime)); // Lifetime
 
-            // --- Corrected Particle Physics Component Addition ---
-            // Create using default constructor, then set initial Z and Vz
-            ParticlePhysicsComponent physicsComp = new ParticlePhysicsComponent(); // Use default constructor
-            physicsComp.z = initialZ;  // Set initial Z height
-            physicsComp.vz = random.nextFloat() * maxInitialVZ; // Set initial upward velocity
-            entityManager.addComponent(particleEntity, physicsComp); // Add the configured component
-            // ------------------------------------------------------
+            // Add ParticlePhysicsComponent, setting initial Z and VZ from above
+            ParticlePhysicsComponent physicsComp = new ParticlePhysicsComponent();
+            physicsComp.z = initialZ;
+            physicsComp.vz = vz; // Use vz from Option 1 or Option 2 above
+            entityManager.addComponent(particleEntity, physicsComp);
         }
     }
 
