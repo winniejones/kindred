@@ -59,6 +59,11 @@ public class AISystem implements System {
             WanderAIComponent ai = entityManager.getComponent(entity, WanderAIComponent.class);
             AttackComponent attackComp = entityManager.getComponent(entity, AttackComponent.class); // Might be null if AI can't attack
 
+            if (pos == null || vel == null || ai == null) continue; // Skip if missing core components
+
+            // <<< Check if this entity is an NPC >>>
+            boolean isNpc = entityManager.hasComponent(entity, NPCComponent.class);
+
             boolean canSeePlayer = false;
             float distanceSqToPlayer = Float.MAX_VALUE;
 
@@ -73,14 +78,14 @@ public class AISystem implements System {
             }
 
             // --- State Transition Logic ---
-            if (canSeePlayer && ai.currentState != WanderAIComponent.AIState.ATTACKING) {
-                // Player entered aggro range while AI was idle/wandering
+            if (canSeePlayer && !isNpc && ai.currentState != WanderAIComponent.AIState.ATTACKING) {
+                // Player entered aggro range, and it's not an NPC -> Attack!
                 log.debug("Entity {} detected player, switching to ATTACKING", entity);
                 ai.currentState = WanderAIComponent.AIState.ATTACKING;
                 vel.vx = 0; // Stop current movement
                 vel.vy = 0;
-            } else if (!canSeePlayer && ai.currentState == WanderAIComponent.AIState.ATTACKING) {
-                // Player left aggro range while AI was attacking
+            } else if ((!canSeePlayer || playerEntityId == -1) && !isNpc && ai.currentState == WanderAIComponent.AIState.ATTACKING) {
+                // Player left aggro range (or disappeared), and it's not an NPC -> Stop attacking
                 log.debug("Entity {} lost player, switching to IDLE", entity);
                 ai.currentState = WanderAIComponent.AIState.IDLE;
                 ai.resetIdleTimer(); // Start idling
@@ -164,11 +169,15 @@ public class AISystem implements System {
                     } else {
                         // Out of attack range, but still aggroed - move towards player
                         double attackDist = Math.sqrt(distanceSqToPlayer); // Need actual distance for normalization
-                        vel.vx = (int) Math.round((attackDx / attackDist) * ai.moveSpeed);
-                        vel.vy = (int) Math.round((attackDy / attackDist) * ai.moveSpeed);
-                        if (vel.vx == 0 && attackDx != 0) vel.vx = (attackDx > 0) ? 1 : -1;
-                        if (vel.vy == 0 && attackDy != 0) vel.vy = (attackDy > 0) ? 1 : -1;
-                        // log.trace("Entity {} chasing player with velocity ({}, {})", entity, vel.vx, vel.vy);
+                        if (attackDist > 0) { // Avoid division by zero if somehow distance is 0
+                             vel.vx = (int) Math.round((attackDx / attackDist) * ai.moveSpeed);
+                             vel.vy = (int) Math.round((attackDy / attackDist) * ai.moveSpeed);
+                             if (vel.vx == 0 && attackDx != 0) vel.vx = (attackDx > 0) ? 1 : -1;
+                             if (vel.vy == 0 && attackDy != 0) vel.vy = (attackDy > 0) ? 1 : -1;
+                        } else {
+                             vel.vx = 0;
+                             vel.vy = 0;
+                        }
                     }
                     break;
             } // End switch state
