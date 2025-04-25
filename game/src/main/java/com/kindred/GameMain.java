@@ -3,25 +3,31 @@ package com.kindred;
 import com.kindred.engine.entity.components.*;
 import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.entity.systems.*;
+import com.kindred.engine.input.InputState;
 import com.kindred.engine.input.Keyboard;
 import com.kindred.engine.level.Level;
 import com.kindred.engine.level.MapLoader;
 import com.kindred.engine.level.SpawnPoint;
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
+import com.kindred.engine.ui.*;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.swing.*;
-import java.awt.Canvas;
-import java.awt.Dimension;
-import java.awt.Graphics;
+import javax.swing.JFrame;
+import javax.swing.event.MouseInputAdapter;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.List;
 
+import static com.kindred.engine.resource.AssetLoader.*;
+
 @Slf4j
-public class GameMain extends Canvas implements Runnable {
+public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
     // --- Member Variables ---
     private JFrame frame;
@@ -29,8 +35,10 @@ public class GameMain extends Canvas implements Runnable {
     private boolean running = false;
 
     // Game Window Constants
-    public static final int WIDTH = 800;
-    public static final int HEIGHT = 600;
+    public static final int PANEL_WIDTH = 180;
+    public static final int CHAT_HEIGHT = 120;
+    public static final int WIDTH = 900;
+    public static final int HEIGHT = 500;
     public static final int SCALE = 2;
     public static final String TITLE = "Kindred";
 
@@ -43,6 +51,7 @@ public class GameMain extends Canvas implements Runnable {
     private final Keyboard keyboard;
     private final EntityManager entityManager;
     private final Level level;
+    private final InputState inputState = new InputState();
 
     // Systems - Declare all systems used
     private final MovementSystem movementSystem;
@@ -57,7 +66,9 @@ public class GameMain extends Canvas implements Runnable {
     private final VisualEffectsSystem visualEffectsSystem;
     private final LifetimeSystem lifetimeSystem;
     private final ParticlePhysicsSystem particlePhysicsSystem;
-    private final CorpseDecaySystem corpseDecaySystem; // <<< Added CorpseDecaySystem
+    private final CorpseDecaySystem corpseDecaySystem;
+
+    private final UIManager uiManager;
 
     // Entity IDs
     private int playerEntity = -1; // Initialize player entity ID to invalid (-1 indicates not spawned yet)
@@ -81,6 +92,11 @@ public class GameMain extends Canvas implements Runnable {
         screen = new Screen(WIDTH, HEIGHT);
         keyboard = new Keyboard();
         addKeyListener(keyboard);
+
+        // <<< Add Mouse Listeners >>>
+        addMouseListener(new MouseInputAdapter()); // Add adapter for press/release/etc.
+        addMouseMotionListener(this); // Add motion listener (implements interface)
+        // -------------------------
 
         // --- Level Loading ---
         log.info("Loading level...");
@@ -106,6 +122,10 @@ public class GameMain extends Canvas implements Runnable {
         corpseDecaySystem = new CorpseDecaySystem(entityManager);
         log.info("Systems initialized.");
 
+        // <<< Initialize UIManager >>>
+        uiManager = new UIManager(/* Pass entityManager if needed later */);
+        log.info("Systems and UIManager initialized.");
+
         // --- Initial Entity Spawning ---
         spawnEntitiesFromMap();
 
@@ -123,6 +143,10 @@ public class GameMain extends Canvas implements Runnable {
              // If CameraSystem needs the player ID explicitly set (instead of finding it):
              // cameraSystem.setTarget(playerEntity);
         }
+
+        // --- Setup UI Panels ---
+        setupUILayout(); // Call helper method to create UI panels
+        // ------------------------
         log.info("GameMain initialization complete.");
     }
 
@@ -236,10 +260,10 @@ public class GameMain extends Canvas implements Runnable {
             List<BufferedImage> upFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 3, framesPerDir, spriteSize, spriteSize, true);
 
             if (!downFrames.isEmpty()) {
-                 walkFrames[0] = downFrames.toArray(new BufferedImage[0]);
-                 walkFrames[1] = leftFrames.toArray(new BufferedImage[0]);
-                 walkFrames[2] = rightFrames.toArray(new BufferedImage[0]);
-                 walkFrames[3] = upFrames.toArray(new BufferedImage[0]);
+                 walkFrames[LEFT] = leftFrames.toArray(new BufferedImage[0]);
+                 walkFrames[DOWN] = downFrames.toArray(new BufferedImage[0]);
+                 walkFrames[RIGHT] = rightFrames.toArray(new BufferedImage[0]);
+                 walkFrames[UP] = upFrames.toArray(new BufferedImage[0]);
                  initialSprite = walkFrames[0][0];
             }
         } catch (Exception e) {
@@ -268,8 +292,8 @@ public class GameMain extends Canvas implements Runnable {
         // --- Graphics ---
         String sheetPath = "/assets/sprites/deidara.png";
         int spriteSize = 32;
-        int framesPerDir = 2;
-        BufferedImage[][] walkFrames = new BufferedImage[4][]; // Reuse structure? Or maybe slime only hops (1 anim)?
+        int framesPerDir = 3;
+        BufferedImage[][] walkFrames = new BufferedImage[4][framesPerDir]; // Reuse structure? Or maybe slime only hops (1 anim)?
         BufferedImage initialSprite = null;
         try {
             List<BufferedImage> downFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 0, framesPerDir, spriteSize, spriteSize, true);
@@ -278,10 +302,10 @@ public class GameMain extends Canvas implements Runnable {
             List<BufferedImage> upFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 3, framesPerDir, spriteSize, spriteSize, true);
 
             if (!downFrames.isEmpty()) {
-                walkFrames[0] = downFrames.toArray(new BufferedImage[0]);
-                walkFrames[1] = leftFrames.toArray(new BufferedImage[0]);
-                walkFrames[2] = rightFrames.toArray(new BufferedImage[0]);
-                walkFrames[3] = upFrames.toArray(new BufferedImage[0]);
+                walkFrames[LEFT] = leftFrames.toArray(new BufferedImage[0]);
+                walkFrames[DOWN] = downFrames.toArray(new BufferedImage[0]);
+                walkFrames[RIGHT] = rightFrames.toArray(new BufferedImage[0]);
+                walkFrames[UP] = upFrames.toArray(new BufferedImage[0]);
                 initialSprite = walkFrames[0][0];
             }
         } catch (Exception e) {
@@ -305,16 +329,113 @@ public class GameMain extends Canvas implements Runnable {
         return entityId;
     }
 
-    /**
-     * Creates the Camera entity (currently just holds CameraComponent).
-     *
-     * @return The entity ID of the created camera.
-     */
     private int createCamera() {
         cameraEntity = entityManager.createEntity();
         entityManager.addComponent(cameraEntity, new CameraComponent(0, 0));
         log.debug("Camera Entity Created with ID: {}", cameraEntity);
         return cameraEntity;
+    }
+
+    /** Helper method to create and add the main UI panels */
+    private void setupUILayout() {
+        log.info("Setting up UI layout...");
+
+        // --- Define Layout Dimensions (Adjust these values) ---
+        int sidebarWidth = 180; // Width of the right sidebar
+        int margin = 5;         // Small margin between elements
+
+        // --- Sidebar Panel (Right) ---
+        Vector2i sidebarPos = new Vector2i(WIDTH - PANEL_WIDTH, 0);
+        Vector2i sidebarSize = new Vector2i(sidebarWidth, HEIGHT);
+        UIPanel sidebarPanel = new UIPanel(sidebarPos, sidebarSize);
+        sidebarPanel.setColor(new Color(40, 40, 40, 230)); // Dark semi-transparent gray
+        uiManager.addPanel(sidebarPanel);
+
+        // --- Chat Panel (Bottom Left) ---
+        // Positioned below the game view, left of the sidebar
+        int chatHeight = 120;   // Height of the bottom-left chat area
+        Vector2i chatPos = new Vector2i(0, HEIGHT - CHAT_HEIGHT);
+        Vector2i chatSize = new Vector2i(WIDTH - PANEL_WIDTH, CHAT_HEIGHT); // Fills space left of sidebar
+        UIPanel chatPanel = new UIPanel(chatPos, chatSize);
+        chatPanel.setColor(new Color(60, 60, 60, 200)); // Slightly lighter gray
+        uiManager.addPanel(chatPanel);
+
+        // --- Panels *within* the Sidebar ---
+        // Note: Positions for these child panels are RELATIVE to the sidebarPanel's position (0,0) initially.
+        // The UIPanel's update/render logic handles the absolute positioning.
+
+        // Minimap Panel (Top Right of Sidebar)
+        int minimapSize = PANEL_WIDTH - (margin * 2); // Square minimap, with margins
+        Vector2i minimapPos = new Vector2i(margin, margin); // Relative to sidebar top-left
+        Vector2i minimapDim = new Vector2i(minimapSize, minimapSize);
+        UIPanel minimapPanel = new UIPanel(minimapPos, minimapDim);
+        minimapPanel.setColor(Color.BLACK); // Black background for minimap
+        sidebarPanel.addComponent(minimapPanel); // Add minimap *to* the sidebar
+
+        // Stats/Equipment Panel (Below Minimap)
+        int statsPanelY = minimapPos.y + minimapDim.y + margin;
+        int statsPanelHeight = 100; // Example height
+        Vector2i statsPos = new Vector2i(margin, statsPanelY);
+        Vector2i statsSize = new Vector2i(minimapSize, statsPanelHeight);
+        UIPanel statsPanel = new UIPanel(statsPos, statsSize);
+        statsPanel.setColor(new Color(70, 70, 90, 210)); // Bluish gray
+        sidebarPanel.addComponent(statsPanel);
+
+        // --- Add Example Label to Stats Panel ---
+        UILabel healthLabel = new UILabel(new Vector2i(10, 10), "HP: 100 / 100"); // Position relative to statsPanel
+        healthLabel.setColor(Color.WHITE);
+        healthLabel.setFont(new Font("Arial", Font.BOLD, 10));
+        statsPanel.addComponent(healthLabel); // Add label TO the panel
+
+        UILabel levelLabel = new UILabel(new Vector2i(10, 30), "Level: 1");
+        levelLabel.setColor(Color.WHITE);
+        levelLabel.setFont(new Font("Arial", Font.PLAIN, 9));
+        statsPanel.addComponent(levelLabel);
+        // -----------------------------------------
+
+        // Button Bar Panel
+        int buttonPanelY = statsPos.y + statsSize.y + margin;
+        int buttonPanelHeight = 40; // Example height
+        Vector2i buttonPos = new Vector2i(margin, buttonPanelY);
+        Vector2i buttonSize = new Vector2i(minimapSize, buttonPanelHeight);
+        UIPanel buttonPanel = new UIPanel(buttonPos, buttonSize);
+        buttonPanel.setColor(new Color(90, 70, 70, 210)); // Reddish gray
+        sidebarPanel.addComponent(buttonPanel);
+
+        // --- Add Example Button to Button Panel ---
+        Vector2i btnSize = new Vector2i(40, 10);
+        // int btnY = (buttonPanelHeight - btnSize.y) / 2; // Center vertically within button panel
+        int btnY = (buttonPanelHeight - btnSize.y); // Center vertically within button panel
+        Vector2i btn1Pos = new Vector2i(2, 2); // Add margin from panel edge
+        UIButton skillsButton = new UIButton(btn1Pos, btnSize, "Skills", () -> {
+             log.info("Skills Button Clicked!");
+             // Action to perform when clicked (using lambda)
+        });
+        skillsButton.setFont(new Font("Arial", Font.PLAIN, 8));
+        skillsButton.setColor(Color.WHITE);
+        skillsButton.setLabelColor(Color.BLACK);
+        buttonPanel.addComponent(skillsButton); // Add button TO the panel
+
+        Vector2i btn2Pos = new Vector2i(btn1Pos.x + btnSize.x + 2, 2);
+        UIButton optionsButton = new UIButton(btn2Pos, btnSize, "Options", () -> log.info("Options Button Clicked!"));
+        optionsButton.setColor(Color.WHITE);
+        optionsButton.setFont(new Font("Arial", Font.PLAIN, 8));
+        optionsButton.setLabelColor(Color.BLACK);
+        buttonPanel.addComponent(optionsButton);
+        // ------------------------------------------
+
+
+        // Inventory Panels (Placeholders)
+        int invPanelY = buttonPos.y + buttonSize.y + margin;
+        int invPanelHeight = 80; // Example height
+        Vector2i invSize = new Vector2i(minimapSize, invPanelHeight);
+
+        UIPanel inventoryPanel1 = new UIPanel(new Vector2i(margin, invPanelY), invSize);
+        inventoryPanel1.setColor(new Color(70, 90, 70, 210)); // Greenish gray
+        sidebarPanel.addComponent(inventoryPanel1);
+        // ... add other inventory panels ...
+
+        log.info("UI layout panels and example components created.");
     }
 
     // --- Game Loop and Core Methods ---
@@ -429,6 +550,15 @@ public class GameMain extends Canvas implements Runnable {
         corpseDecaySystem.update(deltaTime);
         cameraSystem.update(deltaTime);
         animationSystem.update(deltaTime);
+
+        // --- Update UI ---
+        uiManager.update(inputState); // Pass input state here later if input is refactored
+        // -----------------
+
+        // --- Clear Per-Frame Input Events ---
+        // Do this LAST in the update cycle
+        inputState.clearFrameEvents();
+        // ----------------------------------
     }
 
     /** Renders the current game state. */
@@ -462,10 +592,49 @@ public class GameMain extends Canvas implements Runnable {
 
         // --- Draw buffer to screen ---
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
-        Graphics g = bs.getDrawGraphics();
-        g.drawImage(image, 0, 0, WIDTH * SCALE, HEIGHT * SCALE, null); // Draw scaled image
-        g.dispose(); // Release graphics context
-        bs.show(); // Show the next available buffer
+        // Graphics g = bs.getDrawGraphics();
+        // g.drawImage(image, 0, 0, WIDTH * SCALE, HEIGHT * SCALE, null); // Draw scaled image
+        // g.dispose(); // Release graphics context
+        // bs.show(); // Show the next available buffer
+
+        // 4. Get Graphics context for the final image buffer
+        Graphics g = null;
+        try {
+            g = image.getGraphics(); // Get graphics for the image we draw to the canvas
+            if (g != null) {
+                // --- Render UI Layer ---
+                // Draw UI elements directly onto the image, on top of the game world
+                uiManager.render(g);
+                // ---------------------
+            }
+        } catch (Exception e) {
+            log.error("Error during rendering graphics", e);
+        } finally {
+            if (g != null) {
+                g.dispose(); // Dispose graphics context
+            }
+        }
+
+        // 5. Draw the final image (with game + UI) to the screen (Canvas)
+        Graphics screenGraphics = null;
+        try {
+            screenGraphics = bs.getDrawGraphics(); // Get graphics for the actual canvas buffer
+            if (screenGraphics != null) {
+                screenGraphics.drawImage(image, 0, 0, getWidth(), getHeight(), null); // Draw scaled image
+            }
+        } catch (Exception e) {
+            log.error("Error drawing buffer to screen", e);
+        } finally {
+            if (screenGraphics != null) {
+                screenGraphics.dispose();
+            }
+        }
+
+        // 6. Show the buffer
+        try {
+            if (!bs.contentsLost()) { bs.show(); }
+            else { log.warn("Buffer contents lost."); }
+        } catch (IllegalStateException e) { log.error("BufferStrategy error on show()", e); }
     }
 
     public static void main(String[] args) {
@@ -479,4 +648,60 @@ public class GameMain extends Canvas implements Runnable {
         game.frame.setVisible(true);
         game.start();
     }
+
+    // --- Mouse Listener Methods ---
+
+    // Inner class to handle mouse button presses/releases etc.
+    private class MouseInputAdapter extends MouseAdapter {
+        @Override
+        public void mousePressed(MouseEvent e) {
+            // Adjust coordinates for scaling if necessary
+            int scale = GameMain.SCALE; // Get scale factor
+            int logicalX = e.getX() / scale;
+            int logicalY = e.getY() / scale;
+            // log.debug("Mouse Pressed: ({}, {}) -> Logical: ({}, {}) Button: {}", e.getX(), e.getY(), logicalX, logicalY, e.getButton());
+            inputState.setButtonDown(e.getButton());
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            int scale = GameMain.SCALE;
+            int logicalX = e.getX() / scale;
+            int logicalY = e.getY() / scale;
+            // log.debug("Mouse Released: ({}, {}) -> Logical: ({}, {}) Button: {}", e.getX(), e.getY(), logicalX, logicalY, e.getButton());
+            inputState.setButtonUp(e.getButton());
+        }
+
+        // Implement other methods like mouseEntered, mouseExited if needed
+        @Override
+        public void mouseEntered(MouseEvent e) {
+            // Optional: Handle mouse entering the game window
+        }
+
+        @Override
+        public void mouseExited(MouseEvent e) {
+            // Optional: Handle mouse leaving the game window (e.g., reset hover states)
+            inputState.updateMousePosition(-1, -1); // Indicate mouse is outside
+        }
+    }
+
+    // Implement MouseMotionListener methods directly in GameMain
+    @Override
+    public void mouseDragged(MouseEvent e) {
+        // Update position while button is held down
+        int scale = GameMain.SCALE;
+        int logicalX = e.getX() / scale;
+        int logicalY = e.getY() / scale;
+        inputState.updateMousePosition(logicalX, logicalY);
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent e) {
+        // Update position when mouse moves without buttons pressed
+        int scale = GameMain.SCALE;
+        int logicalX = e.getX() / scale;
+        int logicalY = e.getY() / scale;
+        inputState.updateMousePosition(logicalX, logicalY);
+    }
+    // --- End Mouse Listener Methods ---
 }

@@ -18,6 +18,10 @@ public class AssetLoader {
     // Cache to store already loaded images (maps path to image)
     private static final Map<String, BufferedImage> imageCache = new HashMap<>();
     private static final Map<String, BufferedImage> placeholderCache = new HashMap<>();
+    public final static short LEFT = 0;
+    public final static short DOWN = 1;
+    public final static short RIGHT = 2;
+    public final static short UP = 3;
 
     /**
      * Loads an image from the classpath (e.g. /assets/sprites/player.png)

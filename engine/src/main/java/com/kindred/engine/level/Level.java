@@ -49,7 +49,7 @@ public class Level {
     public void addSpawnPoint(SpawnPoint spawnPoint) {
         if (spawnPoint != null) {
             this.spawnPoints.add(spawnPoint);
-            System.out.println("Added spawn point: " + spawnPoint); // Debug
+            log.info("Added spawn point: {}", spawnPoint); // Debug
         }
     }
 
