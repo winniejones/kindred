@@ -67,8 +67,11 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final LifetimeSystem lifetimeSystem;
     private final ParticlePhysicsSystem particlePhysicsSystem;
     private final CorpseDecaySystem corpseDecaySystem;
+    private final ExperienceSystem experienceSystem; // <<< Added ExperienceSystem instance
+    private final StatCalculationSystem statCalculationSystem; // <<< Added StatCalculationSystem instance
 
     private final UIManager uiManager;
+
 
     // Entity IDs
     private int playerEntity = -1; // Initialize player entity ID to invalid (-1 indicates not spawned yet)
@@ -119,6 +122,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         visualEffectsSystem = new VisualEffectsSystem(entityManager);
         lifetimeSystem = new LifetimeSystem(entityManager);
         particlePhysicsSystem = new ParticlePhysicsSystem(entityManager);
+        experienceSystem = new ExperienceSystem(entityManager);             // <<< Instantiate ExperienceSystem
+        statCalculationSystem = new StatCalculationSystem(entityManager);
         corpseDecaySystem = new CorpseDecaySystem(entityManager);
         log.info("Systems initialized.");
 
@@ -140,10 +145,17 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
              throw new RuntimeException("Failed to create player entity - No spawn point found.");
         } else {
              log.info("Player entity successfully created with ID: {}", playerEntity);
-             // If CameraSystem needs the player ID explicitly set (instead of finding it):
-             // cameraSystem.setTarget(playerEntity);
+             // Calculate initial stats for player and any spawned entities
+             log.info("Performing initial stat calculation...");
+             statCalculationSystem.recalculateStats(playerEntity); // Calculate player stats
+             // Calculate stats for all entities with StatsComponent initially
+             for (int entityId : entityManager.getEntitiesWith(StatsComponent.class)) {
+                  if (entityId != playerEntity) { // Avoid double calculation if player already done
+                     statCalculationSystem.recalculateStats(entityId);
+                  }
+             }
+             log.info("Initial stat calculation complete.");
         }
-
         // --- Setup UI Panels ---
         setupUILayout(); // Call helper method to create UI panels
         // ------------------------
@@ -240,6 +252,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         entityManager.addComponent(entityId, new ColliderComponent(15, 14, 8, 15));
         entityManager.addComponent(entityId, new HealthComponent(100));
         entityManager.addComponent(entityId, new AttackComponent(10f, 45f, 0.5f)); // Dmg=10, Range=45px, Cooldown=0.5s
+        entityManager.addComponent(entityId, new ExperienceComponent()); // <<< Add Experience Component
+        entityManager.addComponent(entityId, new StatsComponent()); // <<< Add Stats Component (with defaults)
         log.info("Player Entity Created with ID: {}", entityId);
         return entityId;
     }
@@ -324,7 +338,9 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         entityManager.addComponent(entityId, new EnemyComponent());
         entityManager.addComponent(entityId, new AttackComponent(5f, 35f, 1.5f)); // Dmg=5, Range=35px, Cooldown=1.5s
         entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 48f, 1.0f, 4.0f, 0.6f, 120f)); // Added aggroRadius=120
-
+        entityManager.addComponent(entityId, new XPValueComponent(15)); // XP value
+        entityManager.addComponent(entityId, new ParticipantComponent()); // Tracker for XP sharing
+        entityManager.addComponent(entityId, new StatsComponent(5, 8, 2, 5));
         log.debug("Slime Enemy Entity Created with ID: {}", entityId);
         return entityId;
     }
@@ -541,6 +557,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         playerInputSystem.update(deltaTime);
         aiSystem.update(deltaTime); // AI now handles attacks
         combatSystem.update(deltaTime);
+        experienceSystem.update(deltaTime);      // <<< Process DefeatedComponent, grant XP, add LevelUpEventComponent
+        statCalculationSystem.update(deltaTime); // <<< Process LevelUpEventComponent, recalculate stats
         particlePhysicsSystem.update(deltaTime);
         collisionSystem.update(deltaTime);
         // TODO: Add Entity-vs-Entity collision resolution system here?

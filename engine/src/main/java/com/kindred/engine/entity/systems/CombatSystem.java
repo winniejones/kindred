@@ -96,11 +96,12 @@ public class CombatSystem implements System {
                 if (distanceSq <= rangeSq) {
                     // Target is in range - Apply Damage
                     HealthComponent targetHealth = entityManager.getComponent(targetId, HealthComponent.class);
+                    float actualDamage = attackerAttack.damage; // TODO: Factor in target defense, attacker stats
                     float previousHealth = targetHealth.currentHealth;
-                    targetHealth.currentHealth = Math.max(0, targetHealth.currentHealth - attackerAttack.damage);
-                    log.info("Entity {} hit Entity {} for {} damage. Health: {} -> {}", attackerId, targetId, attackerAttack.damage, previousHealth, targetHealth.currentHealth);
+                    targetHealth.currentHealth = Math.max(0, targetHealth.currentHealth - actualDamage);
+                    float damageDealt = previousHealth - targetHealth.currentHealth; // Actual damage applied
 
-                    // Add TookDamageComponent for visual feedback
+                    log.info("Entity {} hit Entity {} for {} damage. Health: {} -> {}", attackerId, targetId, actualDamage, previousHealth, targetHealth.currentHealth);
                     entityManager.addComponent(targetId, new TookDamageComponent(HIT_FLASH_DURATION));
 
                     // Spawn Hit Particles
@@ -110,9 +111,34 @@ public class CombatSystem implements System {
                     // <<< Pass hit location to spawn method >>>
                     spawnHitParticles(hitX, hitY, attackerPos.x, attackerPos.y, particleCount);
 
+                    // Ensure target has the component (add it if missing)
+                    ParticipantComponent participants = entityManager.getComponent(targetId, ParticipantComponent.class);
+                    if (participants == null) {
+                        participants = new ParticipantComponent();
+                        entityManager.addComponent(targetId, participants);
+                    }
+                    // Only add players as participants for XP distribution? Or any attacker? Add player for now.
+                    if (attackerIsPlayer && damageDealt > 0) {
+                        participants.recordDamage(attackerId, damageDealt);
+                        log.trace("Player {} dealt {} damage to entity {}. Total recorded: {}", attackerId, damageDealt, targetId, participants.getDamageDealtBy(attackerId));
+                    }
+
                     // --- Check for death ---
                     if (targetHealth.currentHealth <= 0 && !entityManager.hasComponent(targetId, DeadComponent.class)) {
                         log.info("Entity {} died.", targetId);
+
+                        // <<< Add DefeatedWithParticipantsComponent >>>
+                        XPValueComponent xpValComp = entityManager.getComponent(targetId, XPValueComponent.class);
+                        ParticipantComponent finalParticipants = entityManager.getComponent(targetId, ParticipantComponent.class);
+                        if (xpValComp != null && finalParticipants != null && !finalParticipants.isEmpty()) {
+                            // Pass the XP value and a copy of the participant set
+                            entityManager.addComponent(targetId, new DefeatedWithParticipantsComponent(xpValComp.xpValue, finalParticipants.getDamageMap()));
+                            log.debug("Added DefeatedWithParticipantsComponent to entity {} with {} participants.", targetId, finalParticipants.getParticipantCount());
+                        } else {
+                            log.debug("Entity {} died but had no XP value or no participants.", targetId);
+                        }
+                        // <<< End Defeated Component >>>
+
                         // Add DeadComponent (defaults stage to 0)
                         entityManager.addComponent(targetId, new DeadComponent());
 
@@ -122,7 +148,7 @@ public class CombatSystem implements System {
                         entityManager.removeComponent(targetId, AttackComponent.class);
                         entityManager.removeComponent(targetId, AttackActionComponent.class);
                         entityManager.removeComponent(targetId, TookDamageComponent.class);
-
+                        // entityManager.removeComponent(targetId, ParticipantComponent.class);
                         // Optional: Stop movement if dead
                         if(entityManager.hasComponent(targetId, VelocityComponent.class)) {
                             VelocityComponent targetVel = entityManager.getComponent(targetId, VelocityComponent.class);
