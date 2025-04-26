@@ -359,6 +359,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // --- Define Layout Dimensions (Adjust these values) ---
         int sidebarWidth = 180; // Width of the right sidebar
         int margin = 5;         // Small margin between elements
+        int contentWidth = sidebarWidth - (margin * 2);
 
         // --- Sidebar Panel (Right) ---
         Vector2i sidebarPos = new Vector2i(WIDTH - PANEL_WIDTH, 0);
@@ -383,7 +384,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // Minimap Panel (Top Right of Sidebar)
         int minimapSize = PANEL_WIDTH - (margin * 2); // Square minimap, with margins
         Vector2i minimapPos = new Vector2i(margin, margin); // Relative to sidebar top-left
-        Vector2i minimapDim = new Vector2i(minimapSize, minimapSize);
+        Vector2i minimapDim = new Vector2i(contentWidth, contentWidth);
         UIPanel minimapPanel = new UIPanel(minimapPos, minimapDim);
         minimapPanel.setColor(Color.BLACK); // Black background for minimap
         sidebarPanel.addComponent(minimapPanel); // Add minimap *to* the sidebar
@@ -392,41 +393,28 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         int statsPanelY = minimapPos.y + minimapDim.y + margin;
         int statsPanelHeight = 100; // Example height
         Vector2i statsPos = new Vector2i(margin, statsPanelY);
-        Vector2i statsSize = new Vector2i(minimapSize, statsPanelHeight);
-        UIPanel statsPanel = new UIPanel(statsPos, statsSize);
-        statsPanel.setColor(new Color(70, 70, 90, 210)); // Bluish gray
-        sidebarPanel.addComponent(statsPanel);
-
-        // --- Add Example Label to Stats Panel ---
-        UILabel healthLabel = new UILabel(new Vector2i(10, 10), "HP: 100 / 100"); // Position relative to statsPanel
-        healthLabel.setColor(Color.WHITE);
-        healthLabel.setFont(new Font("Arial", Font.BOLD, 10));
-        statsPanel.addComponent(healthLabel); // Add label TO the panel
-
-        UILabel levelLabel = new UILabel(new Vector2i(10, 30), "Level: 1");
-        levelLabel.setColor(Color.WHITE);
-        levelLabel.setFont(new Font("Arial", Font.PLAIN, 9));
-        statsPanel.addComponent(levelLabel);
-        // -----------------------------------------
+        Vector2i statsSize = new Vector2i(contentWidth, statsPanelHeight);
+        // Create the specific panel, passing EntityManager and player ID
+        PlayerStatsPanel statsPanel = new PlayerStatsPanel(statsPos, statsSize, entityManager, playerEntity);
+        // No need to set color here, PlayerStatsPanel constructor does it
+        // No need to manually add labels here, PlayerStatsPanel constructor does it
+        sidebarPanel.addComponent(statsPanel); // Add the specialized panel to the sidebar
+        // <<< End Stats Panel Change >>>
 
         // Button Bar Panel
         int buttonPanelY = statsPos.y + statsSize.y + margin;
-        int buttonPanelHeight = 40; // Example height
+        int buttonPanelHeight = 40;
         Vector2i buttonPos = new Vector2i(margin, buttonPanelY);
-        Vector2i buttonSize = new Vector2i(minimapSize, buttonPanelHeight);
+        Vector2i buttonSize = new Vector2i(contentWidth, buttonPanelHeight);
         UIPanel buttonPanel = new UIPanel(buttonPos, buttonSize);
-        buttonPanel.setColor(new Color(90, 70, 70, 210)); // Reddish gray
+        buttonPanel.setColor(new Color(90, 70, 70, 210));
         sidebarPanel.addComponent(buttonPanel);
 
         // --- Add Example Button to Button Panel ---
         Vector2i btnSize = new Vector2i(40, 10);
-        // int btnY = (buttonPanelHeight - btnSize.y) / 2; // Center vertically within button panel
         int btnY = (buttonPanelHeight - btnSize.y); // Center vertically within button panel
         Vector2i btn1Pos = new Vector2i(2, 2); // Add margin from panel edge
-        UIButton skillsButton = new UIButton(btn1Pos, btnSize, "Skills", () -> {
-             log.info("Skills Button Clicked!");
-             // Action to perform when clicked (using lambda)
-        });
+        UIButton skillsButton = new UIButton(btn1Pos, btnSize, "Skills", () -> log.info("Skills Button Clicked!"));
         skillsButton.setFont(new Font("Arial", Font.PLAIN, 8));
         skillsButton.setColor(Color.WHITE);
         skillsButton.setLabelColor(Color.BLACK);
@@ -443,11 +431,10 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
         // Inventory Panels (Placeholders)
         int invPanelY = buttonPos.y + buttonSize.y + margin;
-        int invPanelHeight = 80; // Example height
-        Vector2i invSize = new Vector2i(minimapSize, invPanelHeight);
-
+        int invPanelHeight = 80;
+        Vector2i invSize = new Vector2i(contentWidth, invPanelHeight);
         UIPanel inventoryPanel1 = new UIPanel(new Vector2i(margin, invPanelY), invSize);
-        inventoryPanel1.setColor(new Color(70, 90, 70, 210)); // Greenish gray
+        inventoryPanel1.setColor(new Color(70, 90, 70, 210));
         sidebarPanel.addComponent(inventoryPanel1);
         // ... add other inventory panels ...
 

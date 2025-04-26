@@ -74,19 +74,20 @@ public class StatCalculationSystem implements System {
     }
 
     /**
-     * Recalculates derived stats for a specific entity based on its
-     * base stats, level, equipment, buffs, etc.
+     * Recalculates derived stats for a specific entity.
      * Updates dependent components like HealthComponent.maxHealth.
+     * Optionally sets current health/mana to max (e.g., on initial calculation or level up).
      *
      * @param entityId The ID of the entity whose stats need recalculation.
+     * @param restoreHealthAndMana If true, sets current health/mana to the new maximum.
      */
-    public void recalculateStats(int entityId) {
+    public void recalculateStats(int entityId, boolean restoreHealthAndMana) {
         if (!entityManager.isEntityActive(entityId)) return;
 
-        // Get necessary components
         StatsComponent stats = entityManager.getComponent(entityId, StatsComponent.class);
-        ExperienceComponent exp = entityManager.getComponent(entityId, ExperienceComponent.class); // Need level
+        ExperienceComponent exp = entityManager.getComponent(entityId, ExperienceComponent.class);
         HealthComponent health = entityManager.getComponent(entityId, HealthComponent.class);
+        // ManaComponent mana = entityManager.getComponent(entityId, ManaComponent.class);
         // Get EquipmentComponent, BuffComponent etc. if they exist and affect stats
 
         if (stats == null) {
@@ -124,17 +125,42 @@ public class StatCalculationSystem implements System {
             // Assume a base health value + bonus from stats
             float baseHealth = 50; // TODO: Define base health based on class/race?
             health.maxHealth = baseHealth + stats.maxHealthBonus;
-            // Ensure current health doesn't exceed new max health
-            health.currentHealth = Math.min(health.currentHealth, health.maxHealth);
+
+            // <<< FIX: Set current health to new max if requested >>>
+            if (restoreHealthAndMana) {
+                health.currentHealth = health.maxHealth; // Set current to the new max
+                log.debug("Entity {} health restored to new max: {}", entityId, health.maxHealth);
+            } else {
+                // Otherwise, just ensure current health doesn't exceed new max
+                health.currentHealth = Math.min(health.currentHealth, health.maxHealth);
+            }
+            // <<< End Fix >>>
+
             if (health.maxHealth != oldMaxHealth) {
-                log.debug("Entity {} max health updated: {} -> {}", entityId, oldMaxHealth, health.maxHealth);
+                 log.debug("Entity {} max health updated: {} -> {}", entityId, oldMaxHealth, health.maxHealth);
             }
         }
-        // TODO: Update ManaComponent.maxMana if applicable
+        // TODO: Update ManaComponent similarly if applicable
+        // if (mana != null) {
+        //     float oldMaxMana = mana.maxMana;
+        //     float baseMana = 30;
+        //     mana.maxMana = baseMana + stats.maxManaBonus;
+        //     if (restoreHealthAndMana) { mana.currentMana = mana.maxMana; }
+        //     else { mana.currentMana = Math.min(mana.currentMana, mana.maxMana); }
+        //     // log changes...
+        // }
 
         log.trace("Recalculated stats for entity {}: AP:{}, DEF:{}, HP+:{}, MP+:{}, AS:{}, MS:{}",
                 entityId, stats.attackPower, stats.defensePower, stats.maxHealthBonus, stats.maxManaBonus,
                 stats.attackSpeed, stats.movementSpeedModifier);
     }
+
+     /**
+      * Overload for convenience, typically used for initial calculation.
+      * Sets health/mana to max by default.
+      */
+     public void recalculateStats(int entityId) {
+         recalculateStats(entityId, true); // Restore health/mana by default
+     }
 }
 

@@ -2,12 +2,14 @@ package com.kindred.engine.ui;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
 
 /**
  * A UI component for displaying text.
  */
+@Slf4j
 public class UILabel extends UIComponent {
 
     /**
@@ -47,6 +49,8 @@ public class UILabel extends UIComponent {
         if (!active || text == null || text.isEmpty()) return; // Don't render if inactive or no text
 
         Vector2i absolutePosition = getAbsolutePosition();
+        log.trace("Rendering Label '{}': RelativePos={}, Offset={}, Calculated AbsolutePos={}",
+                text, position, offset, absolutePosition);
         g.setColor(this.color);
         g.setFont(this.font);
         // Draw string at baseline; position usually refers to top-left for components

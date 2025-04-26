@@ -1,6 +1,7 @@
 package com.kindred.engine.ui;
 
 import com.kindred.engine.input.InputState;
+import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.List;
  * A UI component that acts as a container for other UI components.
  * Manages layout (via offsets) and rendering of its children.
  */
+@Slf4j
 public class UIPanel extends UIComponent {
 
     private List<UIComponent> components = new ArrayList<>();
@@ -41,10 +43,13 @@ public class UIPanel extends UIComponent {
         }
     }
 
+    /** Updates the panel and all its active child components. */
+    @Override
     public void update(InputState input) {
         if (!active) return;
 
         Vector2i absolutePosition = getAbsolutePosition();
+        log.trace("Panel update [{}@{}]: Calculated AbsolutePos = {}", this.getClass().getSimpleName(), Integer.toHexString(hashCode()), absolutePosition);
 
         // Iterate in reverse if needed for input processing order (top elements first)
         for (int i = components.size() - 1; i >= 0; i--) {
@@ -52,6 +57,7 @@ public class UIPanel extends UIComponent {
             if (component.active) {
                 component.setOffset(absolutePosition);
                 // <<< Pass input state down to child component's update >>>
+                log.trace("Panel update [{}@{}]: Setting offset for child {} to {}", this.getClass().getSimpleName(), Integer.toHexString(hashCode()), component.getClass().getSimpleName(), absolutePosition);
                 component.update(input);
             }
         }
