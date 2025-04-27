@@ -8,8 +8,10 @@ import com.kindred.engine.render.Screen;
 // Import SLF4J/Lombok if using logging
 import lombok.extern.slf4j.Slf4j;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
+import java.util.List;
 
 @Slf4j
 public class RenderSystem implements System {
@@ -19,6 +21,18 @@ public class RenderSystem implements System {
 
     // List to hold entities for sorting - reused to avoid reallocation
     private final List<Integer> entitiesToRender = new ArrayList<>();
+
+    // --- Configuration for Nameplates/Health Bars ---
+    private final int healthBarWidth = 16;
+    private final int healthBarHeight = 2;
+    private final int nameYOffset = -8; // Pixels above entity origin for name
+    private final int healthBarYOffset = -3; // Pixels above entity origin for health bar
+    private final Font nameFont = new Font("Arial", Font.BOLD, 8);
+    private final Color healthBarBgColor = Color.DARK_GRAY;
+    private final Color healthBarFgColor = Color.GREEN;
+    private final Color healthBarLowColor = Color.RED; // Color when health is low
+    private final float healthLowThreshold = 0.3f; // Percentage below which health bar turns red
+    // ------------------------------------------------
 
     // --- Custom Comparator for Rendering Order ---
     private final Comparator<Integer> renderOrderComparator;
@@ -57,7 +71,7 @@ public class RenderSystem implements System {
             if (pos == null || particle == null || physics == null) continue;
 
             // Calculate screen Y position by subtracting Z height
-            int screenY = pos.y - (int)physics.z; // Adjust offset as needed
+            int screenY = pos.y - (int) physics.z; // Adjust offset as needed
             int screenX = pos.x - particle.size / 2; // Center particle
 
             // Draw particle as a simple colored rectangle using fillRect
@@ -72,24 +86,20 @@ public class RenderSystem implements System {
         // --- 2. Sort Entities using Custom Comparator ---
         entitiesToRender.sort(renderOrderComparator);
 
+        // --- 3. Render Sorted Entities (Sprites + Nameplates/Health Bars) ---
         for (int entity : entitiesToRender) {
-            // Skip rendering particles here, handle them separately
-            if (!entityManager.isEntityActive(entity)) {
-                continue;
-            }
-
-            // We render entities with DeadComponent (corpses)
+            if (!entityManager.isEntityActive(entity)) continue;
 
             PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
             SpriteComponent spriteComp = entityManager.getComponent(entity, SpriteComponent.class);
             if (pos == null || spriteComp == null || spriteComp.sprite == null) continue;
 
             BufferedImage currentSprite = spriteComp.sprite;
+            boolean isDead = entityManager.hasComponent(entity, DeadComponent.class);
             boolean applyFlash = false;
 
-            if (!entityManager.hasComponent(entity, DeadComponent.class) &&
-                entityManager.hasComponent(entity, TookDamageComponent.class))
-            {
+            // Hit Flash Check (Only apply if NOT dead)
+            if (!isDead && entityManager.hasComponent(entity, TookDamageComponent.class)) {
                 TookDamageComponent flash = entityManager.getComponent(entity, TookDamageComponent.class);
                 int flickerSegments = (int) (flash.effectTimer / 0.05f);
                 if (flickerSegments % 2 == 0) {
@@ -101,11 +111,51 @@ public class RenderSystem implements System {
                 // Draw standard sprite at its base X, Y position
                 screen.drawSpriteWithAlpha(pos.x, pos.y, currentSprite);
             }
-        } // End standard sprite loop
-    }
 
+            // <<< Render Nameplate and Health Bar for Living Entities >>>
+            if (!isDead) {
+                HealthComponent health = entityManager.getComponent(entity, HealthComponent.class);
+                boolean isPlayer = entityManager.hasComponent(entity, PlayerComponent.class);
+                boolean isEnemy = entityManager.hasComponent(entity, EnemyComponent.class);
+                NameComponent nameComp = entityManager.getComponent(entity, NameComponent.class);
+                // boolean isNPC = entityManager.hasComponent(entity, NPCComponent.class); // If NPCs need names/bars
 
+                // Only draw for Players and Enemies (adjust as needed)
+                if ((isPlayer || isEnemy) && health != null) {
+                    // --- Calculate Position ---
+                    // Center above the entity's origin (pos.x)
+                    // You might want to center based on sprite width: centerX = pos.x + spriteComp.sprite.getWidth() / 2;
+                    int centerX = pos.x; // Simple centering on origin for now
+                    int nameScreenX = centerX - screen.xOffset; // Apply camera offset
+                    int nameScreenY = pos.y + nameYOffset - screen.yOffset;
+                    int barScreenX = centerX - healthBarWidth / 2 - screen.xOffset; // Center bar horizontally
+                    int barScreenY = pos.y + healthBarYOffset - screen.yOffset;
+                    String entityName = (nameComp != null) ? nameComp.name : "Entity " + entity;
+                    int nameLength = entityName.length() * 2;
+                    // --- Draw Name ---
+                    drawEntityName(nameScreenX + nameLength, nameScreenY, entityName, health);
 
+                    // --- Draw Health Bar ---
+                    drawHealthBar(barScreenX + healthBarWidth, barScreenY, healthBarWidth, healthBarHeight, health.getHealthPercentage());
+                }
+            }
+            // <<< End Nameplate / Health Bar Rendering >>>
+
+        } // End sorted entity loop
+
+        // --- Render Particles (Separately - Drawn On Top) ---
+        for (int entity : entityManager.getEntitiesWith(PositionComponent.class, ParticleComponent.class)) {
+            PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
+            ParticleComponent particle = entityManager.getComponent(entity, ParticleComponent.class);
+            ParticlePhysicsComponent physics = entityManager.getComponent(entity, ParticlePhysicsComponent.class);
+            if (pos == null || particle == null || physics == null) continue;
+            int screenY = pos.y - (int) physics.z;
+            int screenX = pos.x - particle.size / 2;
+            screen.fillRect(screenX, screenY, particle.size, particle.size, particle.color, true);
+        }
+        // --- End Render Particles ---
+
+    } // End render()
     private Comparator<Integer> getRenderOrderComparator(EntityManager entityManager) {
         return (entityA, entityB) -> {
             // Get components safely, handle potential nulls if entities were removed between cycles
@@ -159,5 +209,65 @@ public class RenderSystem implements System {
         Set<Integer> renderableSet = new HashSet<>(initialRenderableSet);
         renderableSet.removeIf(entityId -> entityManager.hasComponent(entityId, ParticleComponent.class));
         entitiesToRender.addAll(renderableSet);
+    }
+    // --- Helper Drawing Methods ---
+
+    /** Draws text centered horizontally at the given coordinates. */
+    private void drawTextCentered(int screenX, int screenY, String text, Font font, Color color) {
+        if (text == null || text.isEmpty()) return;
+        // Need Graphics context to get FontMetrics
+        // This approach requires RenderSystem to have access to Graphics or pass it down
+        // Alternative: Pre-calculate text width (less accurate without Graphics)
+        // For now, let's assume Screen provides a way to draw text directly
+        // screen.drawTextCentered(screenX, screenY, text, font, color);
+
+        // --- If drawing directly here (Requires Graphics g passed to render()) ---
+        /*
+        Graphics g = screen.getGraphics(); // Hypothetical method to get Graphics
+        if (g == null) return; // Cannot draw without graphics context
+        Font originalFont = g.getFont();
+        Color originalColor = g.getColor();
+
+        g.setFont(font);
+        g.setColor(color);
+        FontMetrics fm = g.getFontMetrics();
+        int textWidth = fm.stringWidth(text);
+        int drawX = screenX - textWidth / 2; // Adjust X to center
+        int drawY = screenY + fm.getAscent() / 2; // Adjust Y slightly for vertical center?
+
+        g.drawString(text, drawX, drawY);
+
+        // Restore original font and color
+        g.setFont(originalFont);
+        g.setColor(originalColor);
+        */
+        // --- End Direct Drawing Example ---
+
+        // Using Screen's fillRect for now as a placeholder if no text method exists
+        // screen.fillRect(screenX - 10, screenY - 5, 20, 10, color.getRGB(), false); // fixed = false for screen coords
+        log.warn("drawTextCentered needs implementation using Screen or Graphics context.");
+
+    }
+
+    private void drawEntityName(int nameScreenX, int nameScreenY, String name, HealthComponent health) {
+        Color fgColor = (health.getHealthPercentage() <= healthLowThreshold) ? healthBarLowColor : healthBarFgColor;
+        screen.drawText(nameScreenX, nameScreenY, name, nameFont, fgColor, true);
+    }
+
+    /** Draws a health bar at the given screen coordinates. */
+    private void drawHealthBar(int screenX, int screenY, int width, int height, float percentage) {
+        percentage = Math.max(0f, Math.min(1f, percentage)); // Clamp 0-1
+
+        // Draw background
+        screen.fillRect(screenX, screenY, width, height, healthBarBgColor.getRGB(), false); // fixed=false for screen coords
+
+        // Calculate foreground width and color
+        int fgWidth = (int) (width * percentage);
+        Color fgColor = (percentage <= healthLowThreshold) ? healthBarLowColor : healthBarFgColor;
+
+        // Draw foreground
+        if (fgWidth > 0) {
+            screen.fillRect(screenX, screenY, fgWidth, height, fgColor.getRGB(), false);
+        }
     }
 }

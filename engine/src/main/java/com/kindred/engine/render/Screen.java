@@ -1,30 +1,67 @@
 package com.kindred.engine.render;
 
+import lombok.extern.slf4j.Slf4j;
+
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
+import java.awt.image.DirectColorModel;
+import java.awt.image.WritableRaster;
 import java.util.Arrays;
 import java.util.Random;
 
+@Slf4j
 public class Screen {
 
-    public int width, height;
-    public int[] pixels;
+    public final int width, height;
+    public final int[] pixels;
     public final int MAP_SIZE = 64;
-    public final int MAP_SIZE_MASK = MAP_SIZE - 1;
     public int xOffset, yOffset;
-    public int[] tiles = new int[MAP_SIZE * MAP_SIZE];
     private final Random random = new Random();
 
     private final int ALPHA_COL = 0xffff00ff;
+
+    // --- Internal BufferedImage for Graphics context ---
+    // Create a BufferedImage that WRAPS the existing pixels array.
+    // This allows us to get a Graphics2D context to draw onto the buffer.
+    // NOTE: This assumes the pixel format used by GameMain matches TYPE_INT_ARGB.
+    // If GameMain uses TYPE_INT_RGB, text drawing might not handle alpha correctly.
+    private final BufferedImage bufferImage;
 
     public Screen(int width, int height) {
         this.width = width;
         this.height = height;
         pixels = new int[width * height];
 
-        for (int i = 0; i < MAP_SIZE * MAP_SIZE; i++) {
-            tiles[i] = random.nextInt(0xffffff);
-            tiles[0] = 0;
-        }
+        // --- Initialize bufferImage ---
+        // 1. Create a DataBuffer using your existing pixels array
+        DataBufferInt dataBuffer = new DataBufferInt(pixels, pixels.length);
+
+        // 2. Define the color model (e.g., ARGB)
+        // Masks for ARGB: Alpha (bits 24-31), Red (16-23), Green (8-15), Blue (0-7)
+        DirectColorModel colorModel = new DirectColorModel(32,
+                0x00ff0000, // Red mask
+                0x0000ff00, // Green mask
+                0x000000ff, // Blue mask
+                0xff000000  // Alpha mask
+        );
+        // If using RGB (no alpha): new DirectColorModel(24, 0xFF0000, 0xFF00, 0xFF);
+
+        // 3. Create a WritableRaster using the DataBuffer and dimensions
+        // The raster defines how pixels are stored and accessed.
+        // SinglePixelPackedSampleModel is suitable for TYPE_INT_ARGB/RGB.
+        int[] bandMasks = {colorModel.getRedMask(), colorModel.getGreenMask(), colorModel.getBlueMask(), colorModel.getAlphaMask()};
+        WritableRaster raster = WritableRaster.createPackedRaster(dataBuffer, width, height, width, bandMasks, null);
+        // For RGB: int[] rgbMasks = {colorModel.getRedMask(), colorModel.getGreenMask(), colorModel.getBlueMask()};
+        // WritableRaster raster = WritableRaster.createPackedRaster(dataBuffer, width, height, width, rgbMasks, null);
+
+
+        // 4. Create the BufferedImage using the ColorModel and Raster
+        // This ensures the BufferedImage directly uses your 'pixels' array via the raster.
+        this.bufferImage = new BufferedImage(colorModel, raster, colorModel.isAlphaPremultiplied(), null);
+        // -----------------------------
+
+        log.info("Screen initialized. BufferedImage uses shared pixel buffer.");
     }
 
     public void clear() {
@@ -170,6 +207,63 @@ public class Screen {
                 }
                 // --------------------------
             }
+        }
+    }
+
+    /**
+     * Draws text directly onto the screen buffer at the specified SCREEN coordinates.
+     * Handles centering and applies anti-aliasing.
+     * @param screenX The target X coordinate on the screen (for horizontal centering).
+     * @param screenY The target Y coordinate on the screen (baseline for vertical centering).
+     * @param text The String to draw.
+     * @param font The Font to use.
+     * @param color The Color to use.
+     * @param centered If true, centers the text horizontally at screenX. If false, screenX is the left edge.
+     */
+    public void drawText(int screenX, int screenY, String text, Font font, Color color, boolean centered) {
+        if (text == null || text.isEmpty() || font == null || color == null) {
+            log.warn("drawText called with null or empty parameters. Text: {}, Font: {}, Color: {}", text, font, color);
+            return;
+        }
+
+        // Get Graphics2D context for the bufferImage (which uses our pixels array)
+        Graphics2D g2d = bufferImage.createGraphics();
+        if (g2d == null) {
+            log.error("Failed to create Graphics2D context for text rendering!");
+            return;
+        }
+        try {
+            log.trace("drawText: Text='{}', ScreenX={}, ScreenY={}, Centered={}, Color={}, Font={}",
+                    text, screenX, screenY, centered, color, font);
+            // Set rendering hints for quality text
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+            // Set font and color
+            g2d.setFont(font);
+            g2d.setColor(color);
+            FontMetrics fm = g2d.getFontMetrics();
+
+            // Calculate drawing position
+            int drawX = screenX;
+            if (centered) {
+                int textWidth = fm.stringWidth(text);
+                drawX = screenX - textWidth / 2; // Adjust X for centering
+
+                log.trace("drawText: Centered. TextWidth={}, DrawX={}", textWidth, drawX);
+            }
+            // Adjust Y to draw relative to baseline (drawString expects baseline Y)
+            int drawY = screenY + fm.getAscent() / 2 - fm.getDescent()/2; // Approximate vertical center
+
+            log.trace("drawText: Calling g2d.drawString('{}', {}, {})", text, drawX, drawY);
+            // Draw the string directly onto the bufferImage's graphics context
+            // This modifies the underlying 'pixels' array
+            g2d.drawString(text, drawX, drawY);
+
+        } finally {
+            // IMPORTANT: Dispose the graphics context to release resources
+            g2d.dispose();
         }
     }
 

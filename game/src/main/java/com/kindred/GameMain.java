@@ -251,6 +251,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         entityManager.addComponent(entityId, new PlayerComponent());
         entityManager.addComponent(entityId, new ColliderComponent(15, 14, 8, 15));
         entityManager.addComponent(entityId, new HealthComponent(100));
+        entityManager.addComponent(entityId, new NameComponent("Lolzords"));
         entityManager.addComponent(entityId, new AttackComponent(10f, 45f, 0.5f)); // Dmg=10, Range=45px, Cooldown=0.5s
         entityManager.addComponent(entityId, new ExperienceComponent()); // <<< Add Experience Component
         entityManager.addComponent(entityId, new StatsComponent()); // <<< Add Stats Component (with defaults)
@@ -295,6 +296,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // --- Gameplay Components ---
         entityManager.addComponent(entityId, new HealthComponent(100));
         entityManager.addComponent(entityId, new NPCComponent());
+        entityManager.addComponent(entityId, new NameComponent("Graze"));
         entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 64f, 3.0f, 8.0f, 0.8f, 100f)); // Added aggroRadius=100
         log.debug("Villager NPC Entity Created with ID: {}", entityId);
         return entityId;
@@ -336,6 +338,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         entityManager.addComponent(entityId, new ColliderComponent(24, 16, 4, 16));
         entityManager.addComponent(entityId, new HealthComponent(30));
         entityManager.addComponent(entityId, new EnemyComponent());
+        entityManager.addComponent(entityId, new NameComponent("Deidara"));
         entityManager.addComponent(entityId, new AttackComponent(5f, 35f, 1.5f)); // Dmg=5, Range=35px, Cooldown=1.5s
         entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 48f, 1.0f, 4.0f, 0.6f, 120f)); // Added aggroRadius=120
         entityManager.addComponent(entityId, new XPValueComponent(15)); // XP value
