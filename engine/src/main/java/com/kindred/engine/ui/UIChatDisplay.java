@@ -13,7 +13,7 @@ import java.util.List;
  * Handles basic line wrapping and displays a fixed number of recent lines.
  */
 @Slf4j
-public class UITextArea extends UIComponent {
+public class UIChatDisplay extends UIComponent {
 
     private List<String> lines = new LinkedList<>(); // Use LinkedList for efficient addition/removal from start
     public Vector2i size; // Explicit size required
@@ -22,7 +22,7 @@ public class UITextArea extends UIComponent {
     private int lineHeight = 0; // Calculated from font
     private int lineSpacing = 2; // Extra pixels between lines
 
-    public UITextArea(Vector2i position, Vector2i size) {
+    public UIChatDisplay(Vector2i position, Vector2i size) {
         super(position);
         if (size == null || size.x <= 0 || size.y <= 0) {
             throw new IllegalArgumentException("UITextArea size must be positive.");
@@ -33,23 +33,42 @@ public class UITextArea extends UIComponent {
         // Background color is handled by the parent UIPanel
     }
 
-    public void setFont(Font font) {
+    public UIChatDisplay setFont(Font font) {
         this.font = font;
         this.lineHeight = 0; // Force recalculation
+        return this;
     }
 
-    public void setMaxLines(int maxLines) {
+    public UIChatDisplay setMaxLines(int maxLines) {
         this.maxLines = Math.max(1, maxLines);
+        return this;
     }
+
+    public UIChatDisplay setLineSpacing(int lineSpacing) {
+        this.lineSpacing = lineSpacing;
+        return this;
+    }
+    public UIChatDisplay setLineHeight(int lineHeight) {
+        this.lineHeight = lineHeight;
+        return this;
+    }
+
+    @Override public UIChatDisplay setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
+    @Override public UIChatDisplay setBackgroundColor(int color) { super.setBackgroundColor(color); return this; }
+    @Override public UIChatDisplay setColor(Color color) { super.setColor(color); return this; }
+    @Override public UIChatDisplay setColor(int color) { super.setColor(color); return this; }
+    @Override public UIChatDisplay setActive(boolean active) { super.setActive(active); return this; }
+    @Override public UIChatDisplay setPosition(Vector2i position) { super.setPosition(position); return this; }
+    @Override public UIChatDisplay setPosition(int x, int y) { super.setPosition(x, y); return this; }
 
     /**
      * Adds a new message to the text area. Handles basic word wrapping
      * and removes old lines if exceeding maxLines.
      * @param message The message string to add.
      */
-    public synchronized void addLine(String message) {
+    public synchronized UIChatDisplay addLine(String message) {
         if (message == null || message.isEmpty()) {
-            return;
+            return this;
         }
 
         // Basic Word Wrapping (Needs Graphics context for accurate width)
@@ -62,6 +81,7 @@ public class UITextArea extends UIComponent {
             ((LinkedList<String>) lines).removeFirst(); // Remove oldest line
         }
         log.trace("Added line: '{}'. Total lines: {}", message, lines.size());
+        return this;
     }
 
     @Override

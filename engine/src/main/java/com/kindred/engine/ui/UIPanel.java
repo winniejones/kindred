@@ -30,6 +30,10 @@ public class UIPanel extends UIComponent {
         // Use Color(r, g, b, a) for transparency
         backgroundColor = new Color(100, 100, 100, 180); // RGBA example
     }
+    public UIPanel(int x, int y) {
+        super(x, y); // Call UIComponent constructor
+        backgroundColor = new Color(100, 100, 100, 180); // RGBA example
+    }
 
     /**
      * Adds a child component to this panel.
@@ -42,6 +46,29 @@ public class UIPanel extends UIComponent {
             components.add(component);
         }
     }
+
+    public UIPanel setSize(int width, int height) {
+        if (width > 0 && height > 0) {
+            if (this.size == null) { this.size = new Vector2i(width, height); }
+            else { this.size.set(width, height); }
+        }
+        return this;
+    }
+    public UIPanel setSize(Vector2i size) {
+        if (size.x > 0 && size.y > 0) {
+            if (this.size == null) { this.size = size; }
+            else { this.size.set(size); }
+        }
+        return this;
+    }
+
+    @Override public UIPanel setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
+    @Override public UIPanel setBackgroundColor(int color) { super.setBackgroundColor(color); return this; }
+    @Override public UIPanel setColor(Color color) { super.setColor(color); return this; }
+    @Override public UIPanel setColor(int color) { super.setColor(color); return this; }
+    @Override public UIPanel setActive(boolean active) { super.setActive(active); return this; }
+    @Override public UIPanel setPosition(Vector2i position) { super.setPosition(position); return this; }
+    @Override public UIPanel setPosition(int x, int y) { super.setPosition(x, y); return this; }
 
     /** Updates the panel and all its active child components. */
     @Override

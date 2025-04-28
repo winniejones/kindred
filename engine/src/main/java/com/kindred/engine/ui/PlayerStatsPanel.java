@@ -54,38 +54,38 @@ public class PlayerStatsPanel extends UIPanel {
         int currentY = 5; // Starting Y position for elements
 
         // Health Label and bar
-        healthBar = new UIProgressBar(new Vector2i(barX, currentY), new Vector2i(barWidth, barHeight));
-        healthBar.setForegroundColor(Color.RED); // Health is usually red
-        healthBar.setBackgroundColor(new Color(38, 38, 38)); // Dark red background
+        healthBar = new UIProgressBar(new Vector2i(barX, currentY), new Vector2i(barWidth, barHeight))
+                .setForegroundColor(Color.RED)
+                .setBackgroundColor(new Color(38, 38, 38)); // Dark red background
         this.addComponent(healthBar);
 
         currentY += barHeight;
-        healthLabel = new UILabel(new Vector2i(barX, currentY), "hp: --- / ---"); // Initial placeholder text
-        healthLabel.setBackgroundColor(Color.WHITE);
-        healthLabel.setFont(new Font("Arial", Font.BOLD, 10));
+        healthLabel = new UILabel(new Vector2i(barX, currentY), "hp: --- / ---") // Initial placeholder text
+                .setColor(Color.WHITE)
+                .setFont(new Font("Arial", Font.BOLD, 10));
         this.addComponent(healthLabel); // Add to this panel
 
         currentY += 15; // Move down for next section
 
         // --- Experience ---
-        xpBar = new UIProgressBar(new Vector2i(barX, currentY), new Vector2i(barWidth, barHeight));
-        xpBar.setForegroundColor(Color.WHITE);
-        xpBar.setBackgroundColor(new Color(38, 38, 38)); // Dark yellow background
+        xpBar = new UIProgressBar(new Vector2i(barX, currentY), new Vector2i(barWidth, barHeight))
+                .setForegroundColor(Color.WHITE)
+                .setBackgroundColor(new Color(38, 38, 38)); // Dark yellow background
         this.addComponent(xpBar);
 
         currentY += barHeight;
 
-        xpLabel = new UILabel(new Vector2i(barX, currentY), "exp: --- / ---");
-        xpLabel.setBackgroundColor(Color.WHITE);
-        xpLabel.setFont(new Font("Arial", Font.PLAIN, 9));
+        xpLabel = new UILabel(new Vector2i(barX, currentY), "exp: --- / ---")
+                .setBackgroundColor(Color.WHITE)
+                .setFont(new Font("Arial", Font.PLAIN, 9));
         this.addComponent(xpLabel);
 
         currentY += 15; // Move down for the bar
 
         // Level Label
-        levelLabel = new UILabel(new Vector2i(barX, currentY), "level: ---");
-        levelLabel.setBackgroundColor(Color.WHITE);
-        levelLabel.setFont(new Font("Arial", Font.PLAIN, 9));
+        levelLabel = new UILabel(new Vector2i(barX, currentY), "level: ---")
+                .setBackgroundColor(Color.WHITE)
+                .setFont(new Font("Arial", Font.PLAIN, 9));
         this.addComponent(levelLabel);
 
         // TODO: Add labels for Strength, Dexterity, etc.
@@ -115,7 +115,7 @@ public class PlayerStatsPanel extends UIPanel {
         // --- Update Labels ---
         if (health != null) {
             // Format health nicely (e.g., integer values)
-            healthLabel.setText(String.format("hp: %d / %d", (int)health.currentHealth, (int)health.maxHealth));
+            healthLabel.setText(String.format("hp: %d / %d", (int) health.currentHealth, (int) health.maxHealth));
             healthBar.setProgress(health.getHealthPercentage()); // Use helper method
         } else {
             healthLabel.setText("HP: ???");
@@ -127,7 +127,7 @@ public class PlayerStatsPanel extends UIPanel {
             // Format XP with commas for readability
             xpLabel.setText(String.format(Locale.US, "exp: %,d / %,d", experience.currentXP, experience.xpToNextLevel));
             // Calculate XP progress percentage for the bar
-            double xpProgress = (experience.xpToNextLevel > 0) ? (double)experience.currentXP / experience.xpToNextLevel : 0.0;
+            double xpProgress = (experience.xpToNextLevel > 0) ? (double) experience.currentXP / experience.xpToNextLevel : 0.0;
             xpBar.setProgress(xpProgress);
         } else {
             levelLabel.setText("Level: ???");

@@ -36,18 +36,28 @@ public class UITextInput extends UIComponent {
         this.backgroundColor = Color.WHITE; // Background color
     }
 
-    public void setFont(Font font) { this.font = font; }
-    public void setMaxLength(int maxLength) { this.maxLength = Math.max(1, maxLength); }
+    public UITextInput setSize(Vector2i size) { this.size = size; return this; }
+    public UITextInput setSize(int x, int y) {
+        if (this.size == null) {
+            this.size = new Vector2i(x, y);
+        } else {
+            this.size.set(x, y);
+        }
+        return this;
+    }
+    public UITextInput setFont(Font font) { this.font = font; return this; }
+    public UITextInput setMaxLength(int maxLength) { this.maxLength = Math.max(1, maxLength); return this; }
     public String getText() { return text.toString(); }
-    public void setText(String newText) {
+    public UITextInput setText(String newText) {
         if (newText == null) {
             text = new StringBuilder();
         } else {
             text = new StringBuilder(newText.substring(0, Math.min(newText.length(), maxLength)));
         }
+        return this;
     }
 
-    public void setFocus(boolean focused) {
+    public UITextInput setFocus(boolean focused) {
         if (this.focused != focused) {
             log.debug("Text input focus changed to: {}", focused);
         }
@@ -56,6 +66,7 @@ public class UITextInput extends UIComponent {
             showCursor = true; // Make sure cursor is visible when focus gained
             cursorBlinkTimer = 0f;
         }
+        return this;
     }
     public boolean isFocused() { return focused; }
 
@@ -109,6 +120,13 @@ public class UITextInput extends UIComponent {
         return submitted;
     }
 
+    @Override public UITextInput setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
+    @Override public UITextInput setBackgroundColor(int color) { super.setBackgroundColor(color); return this; }
+    @Override public UITextInput setColor(Color color) { super.setColor(color); return this; }
+    @Override public UITextInput setColor(int color) { super.setColor(color); return this; }
+    @Override public UITextInput setActive(boolean active) { super.setActive(active); return this; }
+    @Override public UITextInput setPosition(Vector2i position) { super.setPosition(position); return this; }
+    @Override public UITextInput setPosition(int x, int y) { super.setPosition(x, y); return this; }
 
     @Override
     public void update(InputState input, float deltaTime) {

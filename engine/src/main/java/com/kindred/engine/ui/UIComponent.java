@@ -31,6 +31,13 @@ public class UIComponent {
         this.color = Color.BLACK; // Default color
     }
 
+    public UIComponent(int x, int y) {
+        this.position = new Vector2i(x, y);
+        this.offset = new Vector2i(); // Initialize offset
+        this.backgroundColor = Color.WHITE; // Default color
+        this.color = Color.BLACK; // Default color
+    }
+
     // Optional constructor if size is known at base level
     // public UIComponent(Vector2i position, Vector2i size) {
     //     this.position = position;
@@ -49,6 +56,17 @@ public class UIComponent {
     }
 
     /**
+     * Sets the active state of the component (fluent).
+     * Inactive components are typically not updated or rendered.
+     * @param active true if the component should be active, false otherwise.
+     * @return This component instance for chaining.
+     */
+    public UIComponent setActive(boolean active) {
+        this.active = active;
+        return this;
+    }
+
+    /**
      * Sets the background color using an integer ARGB value.
      * @param backgroundColor ARGB color integer.
      * @return This component for chaining.
@@ -58,22 +76,32 @@ public class UIComponent {
         this.backgroundColor = new Color(backgroundColor, true); // Assume ARGB
         return this;
     }
-    public UIComponent setTextColor(int color) {
-        this.color = new Color(color, true);
-        return this;
-    }
-
-    /**
-     * Sets the background color using a Color object.
-     * @param color The Color object.
-     * @return This component for chaining.
-     */
     public UIComponent setBackgroundColor(Color color) {
         this.backgroundColor = color;
         return this;
     }
-    public UIComponent setTextColor(Color color) {
+    public UIComponent setColor(int color) {
+        this.color = new Color(color, true);
+        return this;
+    }
+    public UIComponent setColor(Color color) {
         this.color = color;
+        return this;
+    }
+
+    public UIComponent setPosition(Vector2i position) {
+        if (position != null) {
+            this.position = position;
+        }
+        return this;
+    }
+
+    public UIComponent setPosition(int x, int y) {
+        if (this.position == null) {
+            this.position = new Vector2i(x, y);
+        } else {
+            this.position.set(x, y);
+        }
         return this;
     }
 

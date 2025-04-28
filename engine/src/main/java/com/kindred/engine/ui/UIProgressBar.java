@@ -13,19 +13,11 @@ import java.awt.*;
 @Slf4j
 public class UIProgressBar extends UIComponent {
 
-    /**
-     * -- GETTER --
-     * Gets the current progress value (0.0 to 1.0).
-     */
     @Getter
     private double progress = 0.0; // Value between 0.0 and 1.0
     public Vector2i size;          // Explicit size required for the bar
     private Color foregroundColor; // Color of the filled portion
-    /**
-     * -- SETTER --
-     * Sets whether the background track should be drawn.
-     */
-    @Setter
+
     private boolean drawBackground = true; // Whether to draw the background track
 
     /**
@@ -55,13 +47,20 @@ public class UIProgressBar extends UIComponent {
     }
 
     /** Sets the color for the filled portion of the bar. */
-    public void setForegroundColor(Color foregroundColor) {
+    public UIProgressBar setForegroundColor(Color foregroundColor) {
         this.foregroundColor = foregroundColor;
+        return this;
     }
-    /** Sets the color for the filled portion of the bar using ARGB int. */
-    public void setForegroundColor(int color) {
-        this.foregroundColor = new Color(color, true);
+    @Override
+    public UIProgressBar setBackgroundColor(Color backgroundColor) {
+        this.backgroundColor = backgroundColor;
+        return this;
     }
+    @Override public UIProgressBar setColor(Color color) { super.setColor(color); return this; }
+    @Override public UIProgressBar setColor(int color) { super.setColor(color); return this; }
+    @Override public UIProgressBar setActive(boolean active) { super.setActive(active); return this; }
+    @Override public UIProgressBar setPosition(Vector2i position) { super.setPosition(position); return this; }
+    @Override public UIProgressBar setPosition(int x, int y) { super.setPosition(x, y); return this; }
 
     // Update method likely not needed unless the bar animates itself
     @Override

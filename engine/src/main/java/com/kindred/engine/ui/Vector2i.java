@@ -31,6 +31,12 @@ public class Vector2i {
         return this;
     }
 
+    public Vector2i set(Vector2i vector) {
+        this.x = vector.x;
+        this.y = vector.y;
+        return this;
+    }
+
     public Vector2i add(Vector2i other) {
         this.x += other.x;
         this.y += other.y;

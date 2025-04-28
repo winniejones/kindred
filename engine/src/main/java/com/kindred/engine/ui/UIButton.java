@@ -24,8 +24,8 @@ public class UIButton extends UIComponent {
     private final Color colorOnHover = new Color(1, 1, 1, 0.7f);
     private final Color baseColor;
 
-    private final UIActionListener actionListener;
-    @Setter
+    private UIActionListener actionListener;
+
     private UIButtonListener buttonListener;
 
     // State tracking
@@ -53,9 +53,9 @@ public class UIButton extends UIComponent {
 
         // Create the label but DON'T add it to the panel here.
         // Position will be relative to the button's top-left (0,0) for rendering calculation.
-        this.label = new UILabel(new Vector2i(0, 0), text); // Initial position (0,0) relative
-        this.label.setBackgroundColor(Color.WHITE); // Dark gray text
-        this.label.active = true;
+        this.label = new UILabel(new Vector2i(0, 0), text)
+                .setBackgroundColor(Color.WHITE)
+                .setActive(true);
         // We will calculate the centered position within the render method
         this.baseColor = baseColor;
         this.backgroundColor = baseColor;
@@ -78,41 +78,69 @@ public class UIButton extends UIComponent {
         this.baseColor = this.backgroundColor;
     }
 
-    private void initDefaultListener() {
+    private UIButton initDefaultListener() {
         setBackgroundColor(0xaaaaaa);
         this.buttonListener = new UIButtonListener();
+        return this;
     }
 
-    /** Sets the text for the button's label. */
-    public void setText(String text) {
+    public UIButton setLabelColor(Color color) {
+        if (label != null) {
+            this.label.setBackgroundColor(color);
+        }
+        return this;
+    }
+
+    @Override public UIButton setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
+    @Override public UIButton setBackgroundColor(int color) { super.setBackgroundColor(color); return this; }
+    @Override public UIButton setColor(Color color) { super.setColor(color); return this; }
+    @Override public UIButton setColor(int color) { super.setColor(color); return this; }
+    @Override public UIButton setActive(boolean active) { super.setActive(active); return this; }
+    @Override public UIButton setPosition(Vector2i position) { super.setPosition(position); return this; }
+    @Override public UIButton setPosition(int x, int y) { super.setPosition(x, y); return this; }
+
+    /** Sets the size of the button using Vector2i (fluent). */
+    public UIButton setSize(Vector2i size) {
+        if (size != null && size.x > 0 && size.y > 0) { this.size = size; }
+        return this;
+    }
+    /** Sets the size of the button using int dimensions (fluent). */
+    public UIButton setSize(int width, int height) {
+        if (width > 0 && height > 0) {
+            if (this.size == null) { this.size = new Vector2i(width, height); }
+            else { this.size.set(width, height); }
+        }
+        return this;
+    }
+
+    public UIButton setActionListener(UIActionListener listener) {
+        this.actionListener = (listener != null) ? listener : () -> {};
+        return this;
+    }
+    public UIButton setButtonListener(UIButtonListener listener) {
+        this.buttonListener = (listener != null) ? listener : new UIButtonListener();
+        return this;
+    }
+    public UIButton setText(String text) {
         if (label != null) {
             label.setText(text);
         } else if (image == null && text != null && !text.isEmpty()) {
             // If it was an image button, but now setting text, create a label
-            label = new UILabel(new Vector2i(0, 0), text);
-            label.setBackgroundColor(0x444444);
-            label.active = true;
+            label = new UILabel(new Vector2i(0, 0), text)
+                    .setBackgroundColor(0x444444)
+                    .setActive(true);
         }
+        return this;
     }
-
-    /** Sets the font for the button's label. */
-    public void setFont(Font font) {
+    public UIButton setFont(Font font) {
         if (label != null) {
             label.setFont(font);
         }
+        return this;
     }
+    public UIButton setImage(BufferedImage image) { /* ... (same logic) ... */ return this; }
+    public UIButton setArc(int arcWidth, int arcHeight) { this.arcWidth = Math.max(0, arcWidth); this.arcHeight = Math.max(0, arcHeight); return this; }
 
-    public void setLabelColor(Color color) {
-        if (label != null) {
-            this.label.setBackgroundColor(color);
-        }
-    }
-
-    /** Sets the corner arc size. */
-    public void setArc(int arcWidth, int arcHeight) {
-        this.arcWidth = Math.max(0, arcWidth);
-        this.arcHeight = Math.max(0, arcHeight);
-    }
 
     /** Update method - Handles mouse interaction logic using InputState. */
     @Override

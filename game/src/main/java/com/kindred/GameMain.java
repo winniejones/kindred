@@ -69,7 +69,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final InteractionSystem interactionSystem;
     private final UIManager uiManager;
     private UITextInput chatInput;
-    private UITextArea chatArea;
+    private UIChatDisplay chatArea;
 
 
     // Entity IDs
@@ -363,19 +363,16 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         int contentWidth = sidebarWidth - (margin * 2);
 
         // --- Sidebar Panel (Right) ---
-        Vector2i sidebarPos = new Vector2i(WIDTH - PANEL_WIDTH, 0);
-        Vector2i sidebarSize = new Vector2i(sidebarWidth, HEIGHT);
-        UIPanel sidebarPanel = new UIPanel(sidebarPos, sidebarSize);
-        sidebarPanel.setBackgroundColor(new Color(40, 40, 40, 230)); // Dark semi-transparent gray
+        UIPanel sidebarPanel = new UIPanel(WIDTH - PANEL_WIDTH, 0)
+                .setSize(sidebarWidth, HEIGHT)
+                .setBackgroundColor(new Color(40, 40, 40, 230)); // Dark semi-transparent gray
         uiManager.addPanel(sidebarPanel);
 
         // --- Chat Panel (Bottom Left) ---
-        // Positioned below the game view, left of the sidebar
-        int chatHeight = 120;   // Height of the bottom-left chat area
-        Vector2i chatPos = new Vector2i(0, HEIGHT - CHAT_HEIGHT);
-        Vector2i chatSize = new Vector2i(WIDTH - PANEL_WIDTH, CHAT_HEIGHT); // Fills space left of sidebar
-        UIPanel chatPanel = new UIPanel(chatPos, chatSize);
-        chatPanel.setBackgroundColor(new Color(60, 60, 60, 200)); // Slightly lighter gray
+        Vector2i chatSize = new Vector2i(WIDTH - PANEL_WIDTH, CHAT_HEIGHT);
+        UIPanel chatPanel = new UIPanel(0, HEIGHT - CHAT_HEIGHT)
+                .setSize(WIDTH - PANEL_WIDTH, CHAT_HEIGHT)
+                .setBackgroundColor(new Color(60, 60, 60, 200)); // Slightly lighter gray
         uiManager.addPanel(chatPanel);
 
         // --- Panels *within* the Sidebar ---
@@ -415,17 +412,17 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         Vector2i btnSize = new Vector2i(40, 10);
         int btnY = (buttonPanelHeight - btnSize.y); // Center vertically within button panel
         Vector2i btn1Pos = new Vector2i(2, 2); // Add margin from panel edge
-        UIButton skillsButton = new UIButton(btn1Pos, btnSize, "Skills", () -> log.info("Skills Button Clicked!"));
-        skillsButton.setFont(new Font("Arial", Font.PLAIN, 8));
-        skillsButton.setBackgroundColor(Color.WHITE);
-        skillsButton.setLabelColor(Color.BLACK);
+        UIButton skillsButton = new UIButton(btn1Pos, btnSize, "Skills", () -> log.info("Skills Button Clicked!"))
+                .setFont(new Font("Arial", Font.PLAIN, 8))
+                .setBackgroundColor(Color.WHITE)
+                .setLabelColor(Color.BLACK);
         buttonPanel.addComponent(skillsButton); // Add button TO the panel
 
         Vector2i btn2Pos = new Vector2i(btn1Pos.x + btnSize.x + 2, 2);
-        UIButton optionsButton = new UIButton(btn2Pos, btnSize, "Options", () -> log.info("Options Button Clicked!"));
-        optionsButton.setBackgroundColor(Color.WHITE);
-        optionsButton.setFont(new Font("Arial", Font.PLAIN, 8));
-        optionsButton.setLabelColor(Color.BLACK);
+        UIButton optionsButton = new UIButton(btn2Pos, btnSize, "Options", () -> log.info("Options Button Clicked!"))
+                .setBackgroundColor(Color.WHITE)
+                .setFont(new Font("Arial", Font.PLAIN, 8))
+                .setLabelColor(Color.BLACK);
         buttonPanel.addComponent(optionsButton);
         // ------------------------------------------
 
@@ -445,15 +442,13 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // Text Area (Displays messages)
         Vector2i areaPos = new Vector2i(margin, margin); // Relative to chatPanel
         Vector2i areaSize = new Vector2i(chatSize.x - (margin * 2), areaHeight);
-        chatArea = new UITextArea(areaPos, areaSize);
-        chatArea.setMaxLines(15); // Show more lines
+        chatArea = new UIChatDisplay(areaPos, areaSize).setMaxLines(15); // Show more lines
         chatPanel.addComponent(chatArea);
 
         // Text Input (Where player types)
         Vector2i inputPos = new Vector2i(margin, areaPos.y + areaHeight + margin); // Below text area
         Vector2i inputSize = new Vector2i(chatSize.x - (margin * 2), inputHeight);
-        chatInput = new UITextInput(inputPos, inputSize);
-        chatInput.setBackgroundColor(Color.LIGHT_GRAY); // Different background
+        chatInput = new UITextInput(inputPos, inputSize).setBackgroundColor(Color.LIGHT_GRAY); // Different background
         chatPanel.addComponent(chatInput);
         // ----------------------------------
 
