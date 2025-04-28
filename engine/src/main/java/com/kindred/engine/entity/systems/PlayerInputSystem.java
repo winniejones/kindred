@@ -1,9 +1,6 @@
 package com.kindred.engine.entity.systems;
 
-import com.kindred.engine.entity.components.AttackActionComponent;
-import com.kindred.engine.entity.components.AttackComponent;
-import com.kindred.engine.entity.components.PlayerComponent;
-import com.kindred.engine.entity.components.VelocityComponent;
+import com.kindred.engine.entity.components.*;
 import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.entity.core.System;
 import com.kindred.engine.input.Keyboard;
@@ -75,5 +72,16 @@ public class PlayerInputSystem implements System {
                 // if (attack.currentCooldown > 0) log.trace("Player {} attack on cooldown ({}s left)", playerEntity, attack.currentCooldown);
             }
         }
+
+        // --- Interaction Input ---
+        // <<< Added check for interaction key (e.g., 'E') >>>
+        if (keyboard.interact) {
+            // Check if player isn't already trying to interact
+            if (!entityManager.hasComponent(playerEntity, InteractionAttemptComponent.class)) {
+                log.debug("Player {} initiates interaction attempt!", playerEntity);
+                entityManager.addComponent(playerEntity, new InteractionAttemptComponent());
+            }
+        }
+        // <<< End Interaction Input >>>
     }
 }

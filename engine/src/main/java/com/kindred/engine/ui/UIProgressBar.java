@@ -21,7 +21,6 @@ public class UIProgressBar extends UIComponent {
     private double progress = 0.0; // Value between 0.0 and 1.0
     public Vector2i size;          // Explicit size required for the bar
     private Color foregroundColor; // Color of the filled portion
-    private Color backgroundColor; // Color of the background portion (optional)
     /**
      * -- SETTER --
      * Sets whether the background track should be drawn.
@@ -64,22 +63,11 @@ public class UIProgressBar extends UIComponent {
         this.foregroundColor = new Color(color, true);
     }
 
-
-    /** Sets the color for the background track of the bar. */
-    public void setBackgroundColor(Color backgroundColor) {
-        this.backgroundColor = backgroundColor;
-    }
-    /** Sets the color for the background track of the bar using ARGB int. */
-    public void setBackgroundColor(int color) {
-        this.backgroundColor = new Color(color, true);
-    }
-
     // Update method likely not needed unless the bar animates itself
     @Override
-    public void update(InputState input) {
+    public void update(InputState input, float deltaTime) {
         // Base implementation does nothing
     }
-    @Override @Deprecated public void update() { update(new InputState()); }
 
     @Override
     public void render(Graphics g) {

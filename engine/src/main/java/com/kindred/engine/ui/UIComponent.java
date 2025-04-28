@@ -15,6 +15,8 @@ public class UIComponent {
     /** The calculated offset from the screen origin (set by parent UIPanel). */
     protected Vector2i offset;
     /** Background color (optional, specific components might handle color differently). */
+    public Color backgroundColor;
+    /** Text color . */
     public Color color;
     /** Reference to the parent panel (set via init). */
     protected UIPanel panel;
@@ -25,7 +27,8 @@ public class UIComponent {
     public UIComponent(Vector2i position) {
         this.position = position;
         this.offset = new Vector2i(); // Initialize offset
-        this.color = Color.WHITE; // Default color
+        this.backgroundColor = Color.WHITE; // Default color
+        this.color = Color.BLACK; // Default color
     }
 
     // Optional constructor if size is known at base level
@@ -47,12 +50,16 @@ public class UIComponent {
 
     /**
      * Sets the background color using an integer ARGB value.
-     * @param color ARGB color integer.
+     * @param backgroundColor ARGB color integer.
      * @return This component for chaining.
      */
-    public UIComponent setColor(int color) {
+    public UIComponent setBackgroundColor(int backgroundColor) {
         // Using Color(int rgb, boolean hasalpha) might be better if colors have alpha
-        this.color = new Color(color, true); // Assume ARGB
+        this.backgroundColor = new Color(backgroundColor, true); // Assume ARGB
+        return this;
+    }
+    public UIComponent setTextColor(int color) {
+        this.color = new Color(color, true);
         return this;
     }
 
@@ -61,7 +68,11 @@ public class UIComponent {
      * @param color The Color object.
      * @return This component for chaining.
      */
-    public UIComponent setColor(Color color) {
+    public UIComponent setBackgroundColor(Color color) {
+        this.backgroundColor = color;
+        return this;
+    }
+    public UIComponent setTextColor(Color color) {
         this.color = color;
         return this;
     }
@@ -70,9 +81,10 @@ public class UIComponent {
      * Update logic for the component (e.g., checking input for buttons).
      * Called by parent panel or UIManager.
      * @param input The current state of input devices for this frame.
+     * @param deltaTime Time elapsed since the last update in seconds.
      */
     // <<< Added update method accepting InputState >>>
-    public void update(InputState input) {
+    public void update(InputState input, float deltaTime) {
         // Base implementation does nothing. Subclasses override this.
     }
 

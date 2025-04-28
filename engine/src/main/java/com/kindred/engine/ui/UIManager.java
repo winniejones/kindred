@@ -35,12 +35,12 @@ public class UIManager {
      * Passes the current input state down to panels.
      * @param input The current InputState object.
      */
-    public void update(InputState input) { // <<< Accept InputState
+    public void update(InputState input, float deltaTime) { // <<< Accept InputState
         // Iterate in reverse to handle input for top-most panels first (optional)
         for (int i = panels.size() - 1; i >= 0; i--) {
             UIPanel panel = panels.get(i);
             if (panel.active) {
-                panel.update(input); // <<< Pass input state down
+                panel.update(input, deltaTime); // <<< Pass input state down
             }
         }
     }

@@ -35,7 +35,7 @@ public class UILabel extends UIComponent {
         super(position);
         this.font = new Font("Helvetica", Font.PLAIN, 12); // Default font
         this.text = text;
-        this.color = Color.WHITE; // Default color
+        this.backgroundColor = Color.WHITE; // Default color
     }
 
     /** Sets the font for the label. */
@@ -51,7 +51,7 @@ public class UILabel extends UIComponent {
         Vector2i absolutePosition = getAbsolutePosition();
         log.trace("Rendering Label '{}': RelativePos={}, Offset={}, Calculated AbsolutePos={}",
                 text, position, offset, absolutePosition);
-        g.setColor(this.color);
+        g.setColor(this.backgroundColor);
         g.setFont(this.font);
         // Draw string at baseline; position usually refers to top-left for components
         // Adjust y position by font ascent to draw relative to top-left

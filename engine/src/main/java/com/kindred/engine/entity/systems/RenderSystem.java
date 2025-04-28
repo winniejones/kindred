@@ -120,20 +120,21 @@ public class RenderSystem implements System {
                 NameComponent nameComp = entityManager.getComponent(entity, NameComponent.class);
                 // boolean isNPC = entityManager.hasComponent(entity, NPCComponent.class); // If NPCs need names/bars
 
+                // --- Calculate Position ---
+                // Center above the entity's origin (pos.x)
+                // You might want to center based on sprite width: centerX = pos.x + spriteComp.sprite.getWidth() / 2;
+                int centerX = pos.x; // Simple centering on origin for now
+                int nameScreenX = centerX - screen.xOffset; // Apply camera offset
+                int nameScreenY = pos.y + nameYOffset - screen.yOffset;
+                String entityName = (nameComp != null) ? nameComp.name : "Entity " + entity;
+                int nameLength = entityName.length() * 2;
+                drawEntityName(nameScreenX + nameLength, nameScreenY, entityName, health);
+
                 // Only draw for Players and Enemies (adjust as needed)
                 if ((isPlayer || isEnemy) && health != null) {
-                    // --- Calculate Position ---
-                    // Center above the entity's origin (pos.x)
-                    // You might want to center based on sprite width: centerX = pos.x + spriteComp.sprite.getWidth() / 2;
-                    int centerX = pos.x; // Simple centering on origin for now
-                    int nameScreenX = centerX - screen.xOffset; // Apply camera offset
-                    int nameScreenY = pos.y + nameYOffset - screen.yOffset;
                     int barScreenX = centerX - healthBarWidth / 2 - screen.xOffset; // Center bar horizontally
                     int barScreenY = pos.y + healthBarYOffset - screen.yOffset;
-                    String entityName = (nameComp != null) ? nameComp.name : "Entity " + entity;
-                    int nameLength = entityName.length() * 2;
                     // --- Draw Name ---
-                    drawEntityName(nameScreenX + nameLength, nameScreenY, entityName, health);
 
                     // --- Draw Health Bar ---
                     drawHealthBar(barScreenX + healthBarWidth, barScreenY, healthBarWidth, healthBarHeight, health.getHealthPercentage());
@@ -250,7 +251,7 @@ public class RenderSystem implements System {
     }
 
     private void drawEntityName(int nameScreenX, int nameScreenY, String name, HealthComponent health) {
-        Color fgColor = (health.getHealthPercentage() <= healthLowThreshold) ? healthBarLowColor : healthBarFgColor;
+        Color fgColor = health != null ? (health.getHealthPercentage() <= healthLowThreshold) ? healthBarLowColor : healthBarFgColor: Color.GREEN;
         screen.drawText(nameScreenX, nameScreenY, name, nameFont, fgColor, true);
     }
 

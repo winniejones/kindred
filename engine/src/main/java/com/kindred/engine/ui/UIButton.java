@@ -54,11 +54,11 @@ public class UIButton extends UIComponent {
         // Create the label but DON'T add it to the panel here.
         // Position will be relative to the button's top-left (0,0) for rendering calculation.
         this.label = new UILabel(new Vector2i(0, 0), text); // Initial position (0,0) relative
-        this.label.setColor(Color.WHITE); // Dark gray text
+        this.label.setBackgroundColor(Color.WHITE); // Dark gray text
         this.label.active = true;
         // We will calculate the centered position within the render method
         this.baseColor = baseColor;
-        this.color = baseColor;
+        this.backgroundColor = baseColor;
         initDefaultListener();
     }
 
@@ -75,11 +75,11 @@ public class UIButton extends UIComponent {
         this.image = image;
         this.label = null;
         initDefaultListener();
-        this.baseColor = this.color;
+        this.baseColor = this.backgroundColor;
     }
 
     private void initDefaultListener() {
-        setColor(0xaaaaaa);
+        setBackgroundColor(0xaaaaaa);
         this.buttonListener = new UIButtonListener();
     }
 
@@ -90,7 +90,7 @@ public class UIButton extends UIComponent {
         } else if (image == null && text != null && !text.isEmpty()) {
             // If it was an image button, but now setting text, create a label
             label = new UILabel(new Vector2i(0, 0), text);
-            label.setColor(0x444444);
+            label.setBackgroundColor(0x444444);
             label.active = true;
         }
     }
@@ -104,7 +104,7 @@ public class UIButton extends UIComponent {
 
     public void setLabelColor(Color color) {
         if (label != null) {
-            this.label.setColor(color);
+            this.label.setBackgroundColor(color);
         }
     }
 
@@ -116,7 +116,7 @@ public class UIButton extends UIComponent {
 
     /** Update method - Handles mouse interaction logic using InputState. */
     @Override
-    public void update(InputState input) {
+    public void update(InputState input, float deltaTime) {
         if (!active) return;
 
         // Get mouse state from the passed-in InputState object
@@ -134,7 +134,7 @@ public class UIButton extends UIComponent {
         if (currentlyInside) {
             if (!inside) { // Mouse Entered
                 log.trace("Mouse entered button {}", this.label != null ? label.text : "ImageButton");
-                this.setColor(this.colorOnHover);
+                this.setBackgroundColor(this.colorOnHover);
                 buttonListener.entered(this);
                 // If mouse button is already down when entering, ignore the subsequent release
                 ignorePressed = leftMouseButtonDown;
@@ -160,7 +160,7 @@ public class UIButton extends UIComponent {
             if (inside) { // Mouse just exited
                 log.trace("Mouse exited button {}", this.label != null ? label.text : "ImageButton");
                 buttonListener.exited(this); // <<< Crucial: Reset color on exit
-                this.setColor(this.baseColor);
+                this.setBackgroundColor(this.baseColor);
                 // Reset pressed state if mouse was dragged out while pressed
                 if (pressed) {
                     // No action triggered, just reset state
@@ -185,14 +185,6 @@ public class UIButton extends UIComponent {
         }
     }
 
-    // Overload update() from base class - This shouldn't be called if structure is correct
-    @Override
-    @Deprecated
-    public void update() {
-        // log.warn("UIButton update() called without InputState. Input will not work.");
-        update(new InputState()); // Pass dummy state
-    }
-
     @Override
     public void render(Graphics g) {
         if (!active) return;
@@ -214,7 +206,7 @@ public class UIButton extends UIComponent {
             if (image != null) {
                 g2d.drawImage(image, x, y, null);
             } else {
-                g2d.setColor(this.color); // Use current color (set by listener)
+                g2d.setColor(this.backgroundColor); // Use current color (set by listener)
                 g2d.fillRoundRect(x, y, size.x, size.y, arcWidth, arcHeight);
             }
 
@@ -234,7 +226,7 @@ public class UIButton extends UIComponent {
                 int labelY = y + (size.y - textHeight) / 2 + textAscent;
 
                 // Set color and draw
-                g2d.setColor(label.color);
+                g2d.setColor(label.backgroundColor);
                 g2d.drawString(label.text, labelX, labelY);
             }
         } finally {

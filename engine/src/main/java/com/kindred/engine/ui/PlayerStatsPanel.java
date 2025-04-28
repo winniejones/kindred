@@ -40,7 +40,7 @@ public class PlayerStatsPanel extends UIPanel {
         this.playerEntityId = playerEntityId;
 
         // Set a background color (optional)
-        setColor(new Color(70, 70, 90, 210)); // Bluish gray from example
+        setBackgroundColor(new Color(70, 70, 90, 210)); // Bluish gray from example
 
         // Create and add the labels and bars
         createElements();
@@ -61,7 +61,7 @@ public class PlayerStatsPanel extends UIPanel {
 
         currentY += barHeight;
         healthLabel = new UILabel(new Vector2i(barX, currentY), "hp: --- / ---"); // Initial placeholder text
-        healthLabel.setColor(Color.WHITE);
+        healthLabel.setBackgroundColor(Color.WHITE);
         healthLabel.setFont(new Font("Arial", Font.BOLD, 10));
         this.addComponent(healthLabel); // Add to this panel
 
@@ -76,7 +76,7 @@ public class PlayerStatsPanel extends UIPanel {
         currentY += barHeight;
 
         xpLabel = new UILabel(new Vector2i(barX, currentY), "exp: --- / ---");
-        xpLabel.setColor(Color.WHITE);
+        xpLabel.setBackgroundColor(Color.WHITE);
         xpLabel.setFont(new Font("Arial", Font.PLAIN, 9));
         this.addComponent(xpLabel);
 
@@ -84,7 +84,7 @@ public class PlayerStatsPanel extends UIPanel {
 
         // Level Label
         levelLabel = new UILabel(new Vector2i(barX, currentY), "level: ---");
-        levelLabel.setColor(Color.WHITE);
+        levelLabel.setBackgroundColor(Color.WHITE);
         levelLabel.setFont(new Font("Arial", Font.PLAIN, 9));
         this.addComponent(levelLabel);
 
@@ -96,7 +96,7 @@ public class PlayerStatsPanel extends UIPanel {
      * @param input The current InputState (not used directly here but part of the update signature).
      */
     @Override
-    public void update(InputState input) {
+    public void update(InputState input, float deltaTime) {
         if (!active || !entityManager.isEntityActive(playerEntityId)) {
             // If panel inactive or player doesn't exist, maybe clear labels or show defaults
             healthLabel.setText("HP: N/A");
@@ -139,13 +139,6 @@ public class PlayerStatsPanel extends UIPanel {
 
         // Call super.update AFTER updating labels if panels need base update logic,
         // but UIPanel's base update currently only handles children, which we did manually.
-        super.update(input);
-    }
-
-    // Override the no-arg update as well if needed, though ideally it's not called
-    @Override
-    @Deprecated
-    public void update() {
-        update(new InputState());
+        super.update(input, deltaTime);
     }
 }

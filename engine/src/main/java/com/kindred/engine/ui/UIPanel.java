@@ -28,7 +28,7 @@ public class UIPanel extends UIComponent {
         this.size = size;
         // Default panel background color (semi-transparent gray example)
         // Use Color(r, g, b, a) for transparency
-        color = new Color(100, 100, 100, 180); // RGBA example
+        backgroundColor = new Color(100, 100, 100, 180); // RGBA example
     }
 
     /**
@@ -45,7 +45,7 @@ public class UIPanel extends UIComponent {
 
     /** Updates the panel and all its active child components. */
     @Override
-    public void update(InputState input) {
+    public void update(InputState input, float deltaTime) {
         if (!active) return;
 
         Vector2i absolutePosition = getAbsolutePosition();
@@ -58,23 +58,11 @@ public class UIPanel extends UIComponent {
                 component.setOffset(absolutePosition);
                 // <<< Pass input state down to child component's update >>>
                 log.trace("Panel update [{}@{}]: Setting offset for child {} to {}", this.getClass().getSimpleName(), Integer.toHexString(hashCode()), component.getClass().getSimpleName(), absolutePosition);
-                component.update(input);
+                component.update(input, deltaTime);
             }
         }
     }
 
-    /**
-     * Updates the panel and all its active child components.
-     * Sets the correct offset for children before updating them.
-     */
-    @Override
-    public void update() {
-        // This version is called if input state isn't passed down (e.g. from base class loop)
-        // It won't work correctly for buttons needing input.
-        // Ideally, the base UIComponent update signature should also take InputState.
-        update(new InputState()); // Pass a dummy state? Not ideal.
-        // Better: Ensure update(InputState) is always called.
-    }
 
     /**
      * Renders the panel background and all its active child components.
@@ -88,7 +76,7 @@ public class UIPanel extends UIComponent {
         Vector2i absolutePosition = getAbsolutePosition();
 
         // Draw panel background
-        g.setColor(this.color); // Use the panel's color
+        g.setColor(this.backgroundColor); // Use the panel's color
         g.fillRect(absolutePosition.x, absolutePosition.y, size.x, size.y);
 
         // Render child components (they will use their own absolute position)
