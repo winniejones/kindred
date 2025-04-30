@@ -375,35 +375,24 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
                 .setBackgroundColor(new Color(60, 60, 60, 200)); // Slightly lighter gray
         uiManager.addPanel(chatPanel);
 
-        // --- Panels *within* the Sidebar ---
-        // Minimap Panel (Top Right of Sidebar)
+        // --- Add Components to Sidebar Panel ---
+        // Minimap Panel
         UIPanel minimapPanel = new UIPanel(new Vector2i(margin, margin), new Vector2i(contentWidth, contentWidth))
-            .setBackgroundColor(Color.BLACK); // Black background for minimap
-        sidebarPanel.addComponent(minimapPanel); // Add minimap *to* the sidebar
+            .setBackgroundColor(Color.BLACK);
+        sidebarPanel.addComponent(minimapPanel);
 
-        // Stats/Equipment Panel (Below Minimap)
-        int statsPanelHeight = 100; // Example height
+        // Stats Panel
+        int statsPanelHeight = 100;
+        int statsPanelY = margin + contentWidth + margin;
         PlayerStatsPanel statsPanel = new PlayerStatsPanel(
-                new Vector2i(margin, margin + contentWidth + margin),
+                new Vector2i(margin, statsPanelY),
                 new Vector2i(contentWidth, statsPanelHeight),
                 entityManager,
-                playerEntity
-        );
+                playerEntity);
         sidebarPanel.addComponent(statsPanel);
 
-        // --- Create Hidden Panels (Skills, Options) ---
-        skillsPanel = new UIPanel(new Vector2i(100, 100), new Vector2i(300, 400)) // Example position/size
-                .setColor(new Color(50, 80, 50, 220)) // Greenish
-                .setActive(false); // <<< Start hidden
-        uiManager.addPanel(skillsPanel); // Add to manager so it can be toggled
-
-        optionsPanel = new UIPanel(new Vector2i(150, 150), new Vector2i(400, 300)) // Example position/size
-                .setColor(new Color(80, 50, 50, 220)) // Reddish
-                .setActive(false); // <<< Start hidden
-        uiManager.addPanel(optionsPanel);
-
         // Button Bar Panel
-        int buttonPanelY = (3*margin) + contentWidth + statsPanelHeight;
+        int buttonPanelY = margin + statsPanelY + statsPanelHeight;
         int buttonPanelHeight = 40;
         UIPanel buttonPanel = new UIPanel(
                 new Vector2i(margin, buttonPanelY),
@@ -411,57 +400,92 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
                 .setBackgroundColor(new Color(90, 70, 70, 210));
         sidebarPanel.addComponent(buttonPanel);
 
-        // --- Add Example Button to Button Panel ---
-        UIButton skillsButton = new UIButton(
-                new Vector2i(2, 2),
-                new Vector2i(40, 10), "Skills", () -> {
+        // --- Create Hidden Panels (Skills, Options) ---
+        int skillsPanelY = buttonPanelY + 40 + margin;
+        int skillsPanelHeight = 100;
+        skillsPanel = new UIPanel(
+        new Vector2i(margin, skillsPanelY), 
+        new Vector2i(contentWidth, skillsPanelHeight)) // Example position/size
+                .setColor(new Color(50, 80, 50, 220)) // Greenish
+                .setActive(false);
+        // Add a close button TO the skillsPanel
+        Vector2i closeBtnSize = new Vector2i(16, 16);
+        Vector2i closeBtnPos = new Vector2i(skillsPanel.size.x - closeBtnSize.x - 3, 3); // Top-right corner relative to skillsPanel
+        skillsPanel.addComponent(
+             new UIButton(closeBtnPos, closeBtnSize, "X", () -> skillsPanel.setActive(false))
+                 .setColor(Color.RED.darker())
+                 .setFont(new Font("Arial", Font.BOLD, 10))
+                 // TODO: Set hover/press colors for close button
+        );
+        sidebarPanel.addComponent(skillsPanel);
+
+        int optionsPanelY = buttonPanelY + skillsPanelHeight + margin;
+        int optionsPanelheight = 300;
+        optionsPanel = new UIPanel(
+            new Vector2i(margin, optionsPanelY),
+            new Vector2i(contentWidth, optionsPanelheight)) // Example position/size
+                .setColor(new Color(80, 50, 50, 220)) // Reddish
+                .setActive(false); // Start hidden
+        optionsPanel.addComponent(
+             new UIButton(
+                new Vector2i(optionsPanel.size.x - closeBtnSize.x - 3, 3),
+                closeBtnSize, "X", () -> optionsPanel.setActive(false))
+                 .setColor(Color.RED.darker())
+                 .setFont(new Font("Arial", Font.BOLD, 10))
+        );
+        sidebarPanel.addComponent(optionsPanel);
+
+        // --- Add Buttons to Button Bar ---
+        Vector2i btnSize = new Vector2i(40, 10);
+        int btnY = 2;
+        buttonPanel.addComponent(
+            new UIButton(
+                new Vector2i(2, btnY),
+                btnSize, "Skills", () -> {
                     log.info("Options Button Clicked! Toggling panel.");
-                    uiManager.togglePanel(skillsPanel); // <<< Toggle the options panel
+                    // <<< Directly toggle the panel's active state >>>
+                    skillsPanel.setActive(!skillsPanel.active);
                 })
-                .setFont(new Font("Arial", Font.PLAIN, 8))
-                .setBackgroundColor(Color.WHITE)
-                .setLabelColor(Color.BLACK);
-        buttonPanel.addComponent(skillsButton); // Add button TO the panel
-
-
-        UIButton optionsButton = new UIButton(
+            .setFont(new Font("Arial", Font.PLAIN, 8))
+            .setBackgroundColor(Color.WHITE)
+            .setLabelColor(Color.BLACK)
+        );
+        buttonPanel.addComponent(
+            new UIButton(
                 new Vector2i(4 + 40, 2),
                 new Vector2i(40, 10), "Options", () -> {
                     log.info("Skills Button Clicked! Toggling panel.");
-                    uiManager.togglePanel(optionsPanel);
+                    optionsPanel.setActive(!optionsPanel.active);
                 })
-                .setBackgroundColor(Color.WHITE)
-                .setFont(new Font("Arial", Font.PLAIN, 8))
-                .setLabelColor(Color.BLACK);
-        buttonPanel.addComponent(optionsButton);
-        // ------------------------------------------
-
+            .setBackgroundColor(Color.WHITE)
+            .setFont(new Font("Arial", Font.PLAIN, 8))
+            .setLabelColor(Color.BLACK)
+        );
 
         // Inventory Panels (Placeholders)
-        sidebarPanel.addComponent(
-                new UIPanel(
-                new Vector2i(margin, buttonPanelY + buttonPanelHeight + margin),
-                new Vector2i(contentWidth, 80))
-                .setBackgroundColor(new Color(70, 90, 70, 210)));
+        //sidebarPanel.addComponent(
+        //        new UIPanel(
+        //        new Vector2i(margin, buttonPanelY + buttonPanelHeight + margin),
+        //        new Vector2i(contentWidth, 80))
+        //        .setBackgroundColor(new Color(70, 90, 70, 210)));
 
         // --- Add Components to Chat Panel ---
         int inputHeight = 25; // Height of the text input field
         int areaHeight = CHAT_HEIGHT - inputHeight - margin; // Height for text display area
-
+        int chatContentWidth = (WINDOW_WIDTH - PANEL_WIDTH) - (margin*2);
         // Text Area (Displays messages)
         chatPanel.addComponent(
-                new UIChatDisplay(
+               chatArea = (UIChatDisplay) new UIChatDisplay(
                 new Vector2i(margin, margin),
-                new Vector2i((WINDOW_WIDTH - PANEL_WIDTH) - (margin * 2),
-                areaHeight))
+                new Vector2i(chatContentWidth, areaHeight))
                 .setMaxLines(15));
         // Text Input (Where player types)
         chatPanel.addComponent(
-                new UITextInput(
+               chatInput = (UITextInput) new UITextInput(
                 new Vector2i(margin, (2 * margin) + areaHeight),
-                new Vector2i((WINDOW_WIDTH - PANEL_WIDTH) - (margin * 2), inputHeight))
-                .setBackgroundColor(Color.LIGHT_GRAY));
-        // ----------------------------------
+                new Vector2i(chatContentWidth, inputHeight))
+                .setBackgroundColor(Color.LIGHT_GRAY)
+        );
 
         log.info("UI layout panels and components created.");
     }
