@@ -34,8 +34,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     // Game Window Constants
     public static final int PANEL_WIDTH = 180;
     public static final int CHAT_HEIGHT = 120;
-    public static final int WIDTH = 900;
-    public static final int HEIGHT = 500;
+    public static final int WINDOW_WIDTH = 900;
+    public static final int WINDOW_HEIGHT = 500;
     public static final int SCALE = 2;
     public static final String TITLE = "Kindred";
 
@@ -70,6 +70,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final UIManager uiManager;
     private UITextInput chatInput;
     private UIChatDisplay chatArea;
+    private UIPanel skillsPanel;
+    private UIPanel optionsPanel;
 
 
     // Entity IDs
@@ -82,16 +84,16 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
      */
     public GameMain() {
         // --- Window Setup ---
-        setPreferredSize(new Dimension(WIDTH * SCALE, HEIGHT * SCALE));
+        setPreferredSize(new Dimension(WINDOW_WIDTH * SCALE, WINDOW_HEIGHT * SCALE));
         setFocusable(true); // Allow canvas to receive keyboard input
         requestFocus(); // Request focus immediately
 
         // --- Rendering Buffer Setup ---
-        image = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
+        image = new BufferedImage(WINDOW_WIDTH, WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
         // --- Core Component Initialization ---
-        screen = new Screen(WIDTH, HEIGHT);
+        screen = new Screen(WINDOW_WIDTH, WINDOW_HEIGHT);
         keyboard = new Keyboard();
         addKeyListener(new GameKeyListener());
 
@@ -358,68 +360,76 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         log.info("Setting up UI layout...");
 
         // --- Define Layout Dimensions (Adjust these values) ---
-        int sidebarWidth = 180; // Width of the right sidebar
         int margin = 5;         // Small margin between elements
-        int contentWidth = sidebarWidth - (margin * 2);
+        int contentWidth = PANEL_WIDTH - (margin * 2);
 
         // --- Sidebar Panel (Right) ---
-        UIPanel sidebarPanel = new UIPanel(WIDTH - PANEL_WIDTH, 0)
-                .setSize(sidebarWidth, HEIGHT)
+        UIPanel sidebarPanel = new UIPanel(WINDOW_WIDTH - PANEL_WIDTH, 0)
+                .setSize(PANEL_WIDTH, WINDOW_HEIGHT)
                 .setBackgroundColor(new Color(40, 40, 40, 230)); // Dark semi-transparent gray
         uiManager.addPanel(sidebarPanel);
 
         // --- Chat Panel (Bottom Left) ---
-        Vector2i chatSize = new Vector2i(WIDTH - PANEL_WIDTH, CHAT_HEIGHT);
-        UIPanel chatPanel = new UIPanel(0, HEIGHT - CHAT_HEIGHT)
-                .setSize(WIDTH - PANEL_WIDTH, CHAT_HEIGHT)
+        UIPanel chatPanel = new UIPanel(0, WINDOW_HEIGHT - CHAT_HEIGHT)
+                .setSize(WINDOW_WIDTH - PANEL_WIDTH, CHAT_HEIGHT)
                 .setBackgroundColor(new Color(60, 60, 60, 200)); // Slightly lighter gray
         uiManager.addPanel(chatPanel);
 
         // --- Panels *within* the Sidebar ---
-        // Note: Positions for these child panels are RELATIVE to the sidebarPanel's position (0,0) initially.
-        // The UIPanel's update/render logic handles the absolute positioning.
-
         // Minimap Panel (Top Right of Sidebar)
-        int minimapSize = PANEL_WIDTH - (margin * 2); // Square minimap, with margins
-        Vector2i minimapPos = new Vector2i(margin, margin); // Relative to sidebar top-left
-        Vector2i minimapDim = new Vector2i(contentWidth, contentWidth);
-        UIPanel minimapPanel = new UIPanel(minimapPos, minimapDim);
-        minimapPanel.setBackgroundColor(Color.BLACK); // Black background for minimap
+        UIPanel minimapPanel = new UIPanel(new Vector2i(margin, margin), new Vector2i(contentWidth, contentWidth))
+            .setBackgroundColor(Color.BLACK); // Black background for minimap
         sidebarPanel.addComponent(minimapPanel); // Add minimap *to* the sidebar
 
         // Stats/Equipment Panel (Below Minimap)
-        int statsPanelY = minimapPos.y + minimapDim.y + margin;
         int statsPanelHeight = 100; // Example height
-        Vector2i statsPos = new Vector2i(margin, statsPanelY);
-        Vector2i statsSize = new Vector2i(contentWidth, statsPanelHeight);
-        // Create the specific panel, passing EntityManager and player ID
-        PlayerStatsPanel statsPanel = new PlayerStatsPanel(statsPos, statsSize, entityManager, playerEntity);
-        // No need to set color here, PlayerStatsPanel constructor does it
-        // No need to manually add labels here, PlayerStatsPanel constructor does it
-        sidebarPanel.addComponent(statsPanel); // Add the specialized panel to the sidebar
-        // <<< End Stats Panel Change >>>
+        PlayerStatsPanel statsPanel = new PlayerStatsPanel(
+                new Vector2i(margin, margin + contentWidth + margin),
+                new Vector2i(contentWidth, statsPanelHeight),
+                entityManager,
+                playerEntity
+        );
+        sidebarPanel.addComponent(statsPanel);
+
+        // --- Create Hidden Panels (Skills, Options) ---
+        skillsPanel = new UIPanel(new Vector2i(100, 100), new Vector2i(300, 400)) // Example position/size
+                .setColor(new Color(50, 80, 50, 220)) // Greenish
+                .setActive(false); // <<< Start hidden
+        uiManager.addPanel(skillsPanel); // Add to manager so it can be toggled
+
+        optionsPanel = new UIPanel(new Vector2i(150, 150), new Vector2i(400, 300)) // Example position/size
+                .setColor(new Color(80, 50, 50, 220)) // Reddish
+                .setActive(false); // <<< Start hidden
+        uiManager.addPanel(optionsPanel);
 
         // Button Bar Panel
-        int buttonPanelY = statsPos.y + statsSize.y + margin;
+        int buttonPanelY = (3*margin) + contentWidth + statsPanelHeight;
         int buttonPanelHeight = 40;
-        Vector2i buttonPos = new Vector2i(margin, buttonPanelY);
-        Vector2i buttonSize = new Vector2i(contentWidth, buttonPanelHeight);
-        UIPanel buttonPanel = new UIPanel(buttonPos, buttonSize);
-        buttonPanel.setBackgroundColor(new Color(90, 70, 70, 210));
+        UIPanel buttonPanel = new UIPanel(
+                new Vector2i(margin, buttonPanelY),
+                new Vector2i(contentWidth, buttonPanelHeight))
+                .setBackgroundColor(new Color(90, 70, 70, 210));
         sidebarPanel.addComponent(buttonPanel);
 
         // --- Add Example Button to Button Panel ---
-        Vector2i btnSize = new Vector2i(40, 10);
-        int btnY = (buttonPanelHeight - btnSize.y); // Center vertically within button panel
-        Vector2i btn1Pos = new Vector2i(2, 2); // Add margin from panel edge
-        UIButton skillsButton = new UIButton(btn1Pos, btnSize, "Skills", () -> log.info("Skills Button Clicked!"))
+        UIButton skillsButton = new UIButton(
+                new Vector2i(2, 2),
+                new Vector2i(40, 10), "Skills", () -> {
+                    log.info("Options Button Clicked! Toggling panel.");
+                    uiManager.togglePanel(skillsPanel); // <<< Toggle the options panel
+                })
                 .setFont(new Font("Arial", Font.PLAIN, 8))
                 .setBackgroundColor(Color.WHITE)
                 .setLabelColor(Color.BLACK);
         buttonPanel.addComponent(skillsButton); // Add button TO the panel
 
-        Vector2i btn2Pos = new Vector2i(btn1Pos.x + btnSize.x + 2, 2);
-        UIButton optionsButton = new UIButton(btn2Pos, btnSize, "Options", () -> log.info("Options Button Clicked!"))
+
+        UIButton optionsButton = new UIButton(
+                new Vector2i(4 + 40, 2),
+                new Vector2i(40, 10), "Options", () -> {
+                    log.info("Skills Button Clicked! Toggling panel.");
+                    uiManager.togglePanel(optionsPanel);
+                })
                 .setBackgroundColor(Color.WHITE)
                 .setFont(new Font("Arial", Font.PLAIN, 8))
                 .setLabelColor(Color.BLACK);
@@ -428,28 +438,29 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
 
         // Inventory Panels (Placeholders)
-        int invPanelY = buttonPos.y + buttonSize.y + margin;
-        int invPanelHeight = 80;
-        Vector2i invSize = new Vector2i(contentWidth, invPanelHeight);
-        UIPanel inventoryPanel1 = new UIPanel(new Vector2i(margin, invPanelY), invSize);
-        inventoryPanel1.setBackgroundColor(new Color(70, 90, 70, 210));
-        sidebarPanel.addComponent(inventoryPanel1);
+        sidebarPanel.addComponent(
+                new UIPanel(
+                new Vector2i(margin, buttonPanelY + buttonPanelHeight + margin),
+                new Vector2i(contentWidth, 80))
+                .setBackgroundColor(new Color(70, 90, 70, 210)));
 
         // --- Add Components to Chat Panel ---
         int inputHeight = 25; // Height of the text input field
-        int areaHeight = chatSize.y - inputHeight - margin; // Height for text display area
+        int areaHeight = CHAT_HEIGHT - inputHeight - margin; // Height for text display area
 
         // Text Area (Displays messages)
-        Vector2i areaPos = new Vector2i(margin, margin); // Relative to chatPanel
-        Vector2i areaSize = new Vector2i(chatSize.x - (margin * 2), areaHeight);
-        chatArea = new UIChatDisplay(areaPos, areaSize).setMaxLines(15); // Show more lines
-        chatPanel.addComponent(chatArea);
-
+        chatPanel.addComponent(
+                new UIChatDisplay(
+                new Vector2i(margin, margin),
+                new Vector2i((WINDOW_WIDTH - PANEL_WIDTH) - (margin * 2),
+                areaHeight))
+                .setMaxLines(15));
         // Text Input (Where player types)
-        Vector2i inputPos = new Vector2i(margin, areaPos.y + areaHeight + margin); // Below text area
-        Vector2i inputSize = new Vector2i(chatSize.x - (margin * 2), inputHeight);
-        chatInput = new UITextInput(inputPos, inputSize).setBackgroundColor(Color.LIGHT_GRAY); // Different background
-        chatPanel.addComponent(chatInput);
+        chatPanel.addComponent(
+                new UITextInput(
+                new Vector2i(margin, (2 * margin) + areaHeight),
+                new Vector2i((WINDOW_WIDTH - PANEL_WIDTH) - (margin * 2), inputHeight))
+                .setBackgroundColor(Color.LIGHT_GRAY));
         // ----------------------------------
 
         log.info("UI layout panels and components created.");

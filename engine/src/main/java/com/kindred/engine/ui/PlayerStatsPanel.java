@@ -46,6 +46,11 @@ public class PlayerStatsPanel extends UIPanel {
         createElements();
     }
 
+    public PlayerStatsPanel setSize(int x, int y) {
+        this.setSize(x, y);
+        return this;
+    }
+
     private void createElements() {
         int barHeight = 5;
         int labelYOffset = -2; // Offset labels slightly above bars

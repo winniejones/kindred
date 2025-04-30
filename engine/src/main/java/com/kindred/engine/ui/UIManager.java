@@ -1,6 +1,7 @@
 package com.kindred.engine.ui;
 
 import com.kindred.engine.input.InputState;
+import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.List;
  * Manages all top-level UI Panels in the game.
  * Responsible for updating and rendering the UI layer.
  */
+@Slf4j
 public class UIManager {
 
     private List<UIPanel> panels = new ArrayList<>();
@@ -60,14 +62,31 @@ public class UIManager {
 
     // --- Optional Helper Methods ---
 
-    /**
-     * Checks if the given screen coordinates are over any active UI element.
-     * Useful for preventing game world interactions when clicking UI.
-     * (Requires components to have size and potentially a contains(x,y) method)
-     * @param screenX Mouse X coordinate.
-     * @param screenY Mouse Y coordinate.
-     * @return true if the mouse is over an active UI element.
-     */
+    public void showPanel(UIPanel panelToShow) {
+        if (panelToShow != null && panels.contains(panelToShow)) {
+            log.debug("Showing panel: {}", panelToShow.getClass().getSimpleName());
+            panelToShow.setActive(true);
+        } else {
+            log.warn("Attempted to show a panel not managed by UIManager or null panel.");
+        }
+    }
+    public void hidePanel(UIPanel panelToHide) {
+        if (panelToHide != null && panels.contains(panelToHide)) {
+            log.debug("Hiding panel: {}", panelToHide.getClass().getSimpleName());
+            panelToHide.setActive(false);
+        } else {
+            log.warn("Attempted to hide a panel not managed by UIManager or null panel.");
+        }
+    }
+    public void togglePanel(UIPanel panelToToggle) {
+        if (panelToToggle != null && panels.contains(panelToToggle)) {
+            panelToToggle.setActive(!panelToToggle.active); // Flip the active state
+            log.debug("Toggled panel {} visibility to: {}", panelToToggle.getClass().getSimpleName(), panelToToggle.active);
+        } else {
+            log.warn("Attempted to toggle a panel not managed by UIManager or null panel.");
+        }
+    }
+
     public boolean isMouseOverUI(int screenX, int screenY) {
         // Iterate panels in reverse order (top-most first)
         for (int i = panels.size() - 1; i >= 0; i--) {
