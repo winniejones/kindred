@@ -11,6 +11,7 @@ import com.kindred.engine.level.SpawnPoint;
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
 import com.kindred.engine.ui.*;
+import com.kindred.engine.ui.layout.DefaultGameUILayout;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.JFrame;
@@ -32,8 +33,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private boolean running = false;
 
     // Game Window Constants
-    public static final int PANEL_WIDTH = 180;
-    public static final int CHAT_HEIGHT = 120;
     public static final int WINDOW_WIDTH = 900;
     public static final int WINDOW_HEIGHT = 500;
     public static final int SCALE = 2;
@@ -68,10 +67,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final StatCalculationSystem statCalculationSystem; // <<< Added StatCalculationSystem instance
     private final InteractionSystem interactionSystem;
     private final UIManager uiManager;
-    private UITextInput chatInput;
-    private UIChatDisplay chatArea;
-    private UIPanel skillsPanel;
-    private UIPanel optionsPanel;
+    private final DefaultGameUILayout gameUILayout;
 
 
     // Entity IDs
@@ -155,9 +151,10 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             }
             log.info("Initial stat calculation complete.");
         }
-        // --- Setup UI Panels ---
-        setupUILayout(); // Call helper method to create UI panels
-        // ------------------------
+
+        // --- Build UI using Factory ---
+        gameUILayout = DefaultGameUILayout.build(uiManager, WINDOW_WIDTH, WINDOW_HEIGHT, entityManager, playerEntity);
+
         log.info("GameMain initialization complete.");
     }
 
@@ -355,144 +352,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         return cameraEntity;
     }
 
-    /** Helper method to create and add the main UI panels */
-    private void setupUILayout() {
-        log.info("Setting up UI layout...");
-
-        // --- Define Layout Dimensions (Adjust these values) ---
-        int margin = 5;         // Small margin between elements
-        int contentWidth = PANEL_WIDTH - (margin * 2);
-
-        // --- Sidebar Panel (Right) ---
-        UIPanel sidebarPanel = new UIPanel(WINDOW_WIDTH - PANEL_WIDTH, 0)
-                .setSize(PANEL_WIDTH, WINDOW_HEIGHT)
-                .setBackgroundColor(new Color(40, 40, 40, 230)); // Dark semi-transparent gray
-        uiManager.addPanel(sidebarPanel);
-
-        // --- Chat Panel (Bottom Left) ---
-        UIPanel chatPanel = new UIPanel(0, WINDOW_HEIGHT - CHAT_HEIGHT)
-                .setSize(WINDOW_WIDTH - PANEL_WIDTH, CHAT_HEIGHT)
-                .setBackgroundColor(new Color(60, 60, 60, 200)); // Slightly lighter gray
-        uiManager.addPanel(chatPanel);
-
-        // --- Add Components to Sidebar Panel ---
-        // Minimap Panel
-        UIPanel minimapPanel = new UIPanel(new Vector2i(margin, margin), new Vector2i(contentWidth, contentWidth))
-            .setBackgroundColor(Color.BLACK);
-        sidebarPanel.addComponent(minimapPanel);
-
-        // Stats Panel
-        int statsPanelHeight = 100;
-        int statsPanelY = margin + contentWidth + margin;
-        PlayerStatsPanel statsPanel = new PlayerStatsPanel(
-                new Vector2i(margin, statsPanelY),
-                new Vector2i(contentWidth, statsPanelHeight),
-                entityManager,
-                playerEntity);
-        sidebarPanel.addComponent(statsPanel);
-
-        // Button Bar Panel
-        int buttonPanelY = margin + statsPanelY + statsPanelHeight;
-        int buttonPanelHeight = 40;
-        UIPanel buttonPanel = new UIPanel(
-                new Vector2i(margin, buttonPanelY),
-                new Vector2i(contentWidth, buttonPanelHeight))
-                .setBackgroundColor(new Color(90, 70, 70, 210));
-        sidebarPanel.addComponent(buttonPanel);
-
-        // --- Create Hidden Panels (Skills, Options) ---
-        int skillsPanelY = buttonPanelY + 40 + margin;
-        int skillsPanelHeight = 100;
-        skillsPanel = new UIPanel(
-        new Vector2i(margin, skillsPanelY), 
-        new Vector2i(contentWidth, skillsPanelHeight)) // Example position/size
-                .setColor(new Color(50, 80, 50, 220)) // Greenish
-                .setActive(false);
-        // Add a close button TO the skillsPanel
-        Vector2i closeBtnSize = new Vector2i(16, 16);
-        Vector2i closeBtnPos = new Vector2i(skillsPanel.size.x - closeBtnSize.x - 3, 3); // Top-right corner relative to skillsPanel
-        skillsPanel.addComponent(
-             new UIButton(closeBtnPos, closeBtnSize, "X", () -> skillsPanel.setActive(false))
-                 .setColor(Color.RED.darker())
-                 .setFont(new Font("Arial", Font.BOLD, 10))
-                 // TODO: Set hover/press colors for close button
-        );
-        sidebarPanel.addComponent(skillsPanel);
-
-        int optionsPanelY = buttonPanelY + skillsPanelHeight + margin;
-        int optionsPanelheight = 300;
-        optionsPanel = new UIPanel(
-            new Vector2i(margin, optionsPanelY),
-            new Vector2i(contentWidth, optionsPanelheight)) // Example position/size
-                .setColor(new Color(80, 50, 50, 220)) // Reddish
-                .setActive(false); // Start hidden
-        optionsPanel.addComponent(
-             new UIButton(
-                new Vector2i(optionsPanel.size.x - closeBtnSize.x - 3, 3),
-                closeBtnSize, "X", () -> optionsPanel.setActive(false))
-                 .setColor(Color.RED.darker())
-                 .setFont(new Font("Arial", Font.BOLD, 10))
-        );
-        sidebarPanel.addComponent(optionsPanel);
-
-        // --- Add Buttons to Button Bar ---
-        Vector2i btnSize = new Vector2i(40, 10);
-        int btnY = 2;
-        buttonPanel.addComponent(
-            new UIButton(
-                new Vector2i(2, btnY),
-                btnSize, "Skills", () -> {
-                    log.info("Options Button Clicked! Toggling panel.");
-                    // <<< Directly toggle the panel's active state >>>
-                    skillsPanel.setActive(!skillsPanel.active);
-                })
-            .setFont(new Font("Arial", Font.PLAIN, 8))
-            .setBackgroundColor(Color.WHITE)
-            .setLabelColor(Color.BLACK)
-        );
-        buttonPanel.addComponent(
-            new UIButton(
-                new Vector2i(4 + 40, 2),
-                new Vector2i(40, 10), "Options", () -> {
-                    log.info("Skills Button Clicked! Toggling panel.");
-                    optionsPanel.setActive(!optionsPanel.active);
-                })
-            .setBackgroundColor(Color.WHITE)
-            .setFont(new Font("Arial", Font.PLAIN, 8))
-            .setLabelColor(Color.BLACK)
-        );
-
-        // Inventory Panels (Placeholders)
-        //sidebarPanel.addComponent(
-        //        new UIPanel(
-        //        new Vector2i(margin, buttonPanelY + buttonPanelHeight + margin),
-        //        new Vector2i(contentWidth, 80))
-        //        .setBackgroundColor(new Color(70, 90, 70, 210)));
-
-        // --- Add Components to Chat Panel ---
-        int inputHeight = 25; // Height of the text input field
-        int areaHeight = CHAT_HEIGHT - inputHeight - margin; // Height for text display area
-        int chatContentWidth = (WINDOW_WIDTH - PANEL_WIDTH) - (margin*2);
-        // Text Area (Displays messages)
-        chatPanel.addComponent(
-               chatArea = (UIChatDisplay) new UIChatDisplay(
-                new Vector2i(margin, margin),
-                new Vector2i(chatContentWidth, areaHeight))
-                .setMaxLines(15));
-        // Text Input (Where player types)
-        chatPanel.addComponent(
-               chatInput = (UITextInput) new UITextInput(
-                new Vector2i(margin, (2 * margin) + areaHeight),
-                new Vector2i(chatContentWidth, inputHeight))
-                .setBackgroundColor(Color.LIGHT_GRAY)
-        );
-
-        log.info("UI layout panels and components created.");
-    }
-
     // --- Game Loop and Core Methods ---
-
-    /** Starts the game thread. */
     public synchronized void start() {
         if (running) return;
         running = true;
@@ -501,7 +361,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         log.info("Game thread started.");
     }
 
-    /** Stops the game thread gracefully. */
     public synchronized void stop() {
         if (!running) return;
         running = false;
@@ -610,17 +469,14 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         uiManager.update(inputState, deltaTime); // Pass input state here later if input is refactored
         // -----------------
 
-        // --- Handle Chat Submission ---
-        if (chatInput != null && chatInput.isFocused()) {
-            String submitted = chatInput.getSubmittedTextAndClear();
+        // --- Handle Chat Submission (using Layout Facade) ---
+        if (gameUILayout != null && gameUILayout.isChatInputFocused()) { // Check focus via layout
+            String submitted = gameUILayout.getSubmittedChatTextAndClear(); // Get text via layout
             if (submitted != null) {
                 log.info("Chat Submitted: {}", submitted);
-                // Add message to chat area
-                // TODO: Add player name prefix?
-                chatArea.addLine(submitted);
+                gameUILayout.addChatLine("You: " + submitted); // Add line via layout
                 // TODO: Send message to server / process chat command
-                // TODO: Implement different say types (scream, whisper) based on prefix?
-                chatInput.setFocus(false); // Lose focus after submitting
+                gameUILayout.unfocusChatInput(); // Unfocus via layout
             }
         }
         // ---------------------------
@@ -634,48 +490,24 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     /** Renders the current game state. */
     private void render() {
         BufferStrategy bs = getBufferStrategy();
-        if (bs == null) {
-            try {
-                createBufferStrategy(3); // Use triple buffering
-            } catch (IllegalStateException e) {
-                log.error("Error creating BufferStrategy", e);
-                // Handle error - maybe stop game loop?
-                running = false;
-                return;
-            }
-            return; // Exit render call for this frame, will try again next frame
-        }
-
+        if (bs == null) { createBufferStrategy(3); return; }
         // Prepare screen for drawing
-        screen.clear(); // Clear the pixel buffer
+        screen.clear();
 
-        // Camera offset is set internally by CameraSystem.update() called in update()
-
-        // Render Tiles
         level.render(screen);
-
-        // Render Entities (Players, NPCs, Mobs, Items)
         renderSystem.render();
-
-        // Render Debug Info
         debugRenderSystem.render();
 
         // --- Draw buffer to screen ---
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
-        // Graphics g = bs.getDrawGraphics();
-        // g.drawImage(image, 0, 0, WIDTH * SCALE, HEIGHT * SCALE, null); // Draw scaled image
-        // g.dispose(); // Release graphics context
-        // bs.show(); // Show the next available buffer
 
-        // 4. Get Graphics context for the final image buffer
+        // Get Graphics and Render UI
         Graphics g = null;
         try {
             g = image.getGraphics(); // Get graphics for the image we draw to the canvas
             if (g != null) {
                 // --- Render UI Layer ---
-                // Draw UI elements directly onto the image, on top of the game world
                 uiManager.render(g);
-                // ---------------------
             }
         } catch (Exception e) {
             log.error("Error during rendering graphics", e);
@@ -736,25 +568,26 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             inputState.setButtonDown(e.getButton());
 
             // --- Check for Chat Input Focus on Click ---
-            if (chatInput != null && e.getButton() == MouseEvent.BUTTON1) { // Only on left click
-                Vector2i inputAbsPos = chatInput.getAbsolutePosition();
-                Rectangle inputBounds = new Rectangle(inputAbsPos.x, inputAbsPos.y, chatInput.size.x, chatInput.size.y);
-                if (inputBounds.contains(logicalX, logicalY)) {
-                    if (!chatInput.isFocused()) {
-                        log.debug("Giving focus to chat input via mouse click.");
-                        chatInput.setFocus(true);
-                    }
-                    // Optional: Consume event if click was on UI?
-                    // e.consume();
-                } else {
-                    // Click was outside the chat input
-                    if (chatInput.isFocused()) {
-                        log.debug("Removing focus from chat input via mouse click outside.");
-                        chatInput.setFocus(false);
-                    }
-                }
+            // <<< Need access to chatInput bounds, potentially via Layout object or UIManager >>>
+            // This logic might need refinement depending on how UI element bounds are checked
+            boolean clickedOnChatInput = false;
+            if (gameUILayout != null /* && gameUILayout.isCoordOverChatInput(logicalX, logicalY) */) {
+                // If we can check bounds via layout/manager:
+                // clickedOnChatInput = true;
+                // For now, assume any click outside sidebar potentially unfocuses
             }
-            // -----------------------------------------
+
+            // Simplified logic: If chat is focused and click is outside, unfocus.
+            // If click is inside (checked by button itself), button handles focus.
+            // This doesn't handle clicking *on* the input field itself perfectly yet.
+            if (gameUILayout != null && gameUILayout.isChatInputFocused() && !clickedOnChatInput) {
+                // A more robust check would be needed here using UIManager.isMouseOverUI
+                // or specific bounds checking if the click wasn't on an interactive element.
+                // For now, any click outside *might* unfocus.
+                // log.debug("Potential unfocus click outside chat input.");
+                // gameUILayout.unfocusChatInput(); // Maybe too aggressive?
+            }
+            // Button clicks should handle their own focus gain if needed
         }
 
         @Override
@@ -807,45 +640,43 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         @Override
         public void keyPressed(KeyEvent e) {
             int keyCode = e.getKeyCode();
+            boolean consumed = false; // Flag to check if UI consumed the event
 
             // --- Handle Chat Input Focus (Ctrl+Enter) ---
             if (e.isControlDown() && keyCode == KeyEvent.VK_ENTER) {
-                if (chatInput != null && !chatInput.isFocused()) {
+                if (gameUILayout != null && !gameUILayout.isChatInputFocused()) {
                     log.debug("Giving focus to chat input via Ctrl+Enter.");
-                    chatInput.setFocus(true);
-                    e.consume(); // Consume the combo
-                    return;
+                    gameUILayout.focusChatInput(); // Use facade
+                    consumed = true;
                 }
             }
-
             // --- Handle Chat Input Focus (Enter to Submit/Lose Focus) ---
-            // <<< REMOVED: Enter no longer gives focus, only submits >>>
-            if (keyCode == KeyEvent.VK_ENTER) {
-                if (chatInput != null && chatInput.isFocused()) {
-                    // Let chatInput handle Enter for submission (logic moved to update loop)
-                    chatInput.handleKeyPress(e);
+            else if (keyCode == KeyEvent.VK_ENTER) {
+                if (gameUILayout != null && gameUILayout.isChatInputFocused()) {
+                    // Let chat widget handle Enter for submission (via handleKeyPress)
+                    gameUILayout.handleChatKeyPress(e);
                     // Focus loss happens in update loop after text is processed
-                    e.consume(); // Consume Enter so game doesn't react
-                    return;
+                    consumed = true;
                 }
-                // <<< REMOVED else block that gave focus on Enter >>>
             }
 
-            // --- Pass key press to focused UI element ---
-            if (chatInput != null && chatInput.isFocused()) {
-                chatInput.handleKeyPress(e);
-                e.consume(); // Consume typing keys
-                return; // Stop processing here if chat has focus
+            // --- Pass key press to focused UI element (Chat) ---
+            if (gameUILayout != null && gameUILayout.isChatInputFocused()) {
+                // Pass event to layout facade which passes to chat widget
+                gameUILayout.handleChatKeyPress(e);
+                consumed = true; // Consume typing keys
             }
 
-            // --- If chat doesn't have focus, update Keyboard state for game systems ---
-            keyboard.keyPressed(e); // Update the holder object
+            // --- If UI didn't consume, update Keyboard state for game systems ---
+            if (!consumed) {
+                keyboard.keyPressed(e); // Update the holder object
+            }
         }
 
         @Override
         public void keyReleased(KeyEvent e) {
             // If chat doesn't have focus, update Keyboard state
-            if (chatInput == null || !chatInput.isFocused()) {
+            if (gameUILayout == null || !gameUILayout.isChatInputFocused()) {
                 keyboard.keyReleased(e);
             }
             // Note: No need to pass release events to chatInput usually

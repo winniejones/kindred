@@ -3,7 +3,6 @@ package com.kindred.engine.ui;
 import com.kindred.engine.input.InputState;
 import com.kindred.engine.ui.listener.UIActionListener;
 import com.kindred.engine.ui.listener.UIButtonListener;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
@@ -21,7 +20,7 @@ public class UIButton extends UIComponent {
     public UILabel label;
     private BufferedImage image = null;
 
-    private final Color colorOnHover = new Color(1, 1, 1, 0.7f);
+    private final Color colorOnHover;
     private final Color baseColor;
 
     private UIActionListener actionListener;
@@ -40,10 +39,10 @@ public class UIButton extends UIComponent {
      * Creates a button with text.
      */
     public UIButton(Vector2i position, Vector2i size, String text, UIActionListener actionListener) {
-        this(position, size, text, Color.WHITE, actionListener);
+        this(position, size, text, Const.COLOR_TEXT_LIGHT, Const.COLOR_BG_BTN_HOVER, Const.COLOR_BG_BTN_DEFAULT, actionListener);
     }
 
-    public UIButton(Vector2i position, Vector2i size, String text, Color baseColor, UIActionListener actionListener) {
+    public UIButton(Vector2i position, Vector2i size, String text, Color textColor, Color hoverColor, Color baseColor, UIActionListener actionListener) {
         super(position);
         if (size == null || size.x <= 0 || size.y <= 0) {
             throw new IllegalArgumentException("Button size must be positive.");
@@ -54,9 +53,10 @@ public class UIButton extends UIComponent {
         // Create the label but DON'T add it to the panel here.
         // Position will be relative to the button's top-left (0,0) for rendering calculation.
         this.label = new UILabel(new Vector2i(0, 0), text)
-                .setBackgroundColor(Color.WHITE)
                 .setActive(true);
         // We will calculate the centered position within the render method
+        this.color = textColor;
+        this.colorOnHover = hoverColor;
         this.baseColor = baseColor;
         this.backgroundColor = baseColor;
         initDefaultListener();
@@ -65,7 +65,7 @@ public class UIButton extends UIComponent {
     /**
      * Creates a button using an image.
      */
-    public UIButton(Vector2i position, BufferedImage image, UIActionListener actionListener) {
+    public UIButton(Vector2i position, BufferedImage image, Color colorOnHover, UIActionListener actionListener) {
         super(position);
         if (image == null) {
             throw new IllegalArgumentException("Button image cannot be null");
@@ -74,19 +74,18 @@ public class UIButton extends UIComponent {
         this.actionListener = actionListener;
         this.image = image;
         this.label = null;
-        initDefaultListener();
+        this.colorOnHover = colorOnHover;
         this.baseColor = this.backgroundColor;
+        initDefaultListener();
     }
 
-    private UIButton initDefaultListener() {
-        setBackgroundColor(0xaaaaaa);
+    private void initDefaultListener() {
         this.buttonListener = new UIButtonListener();
-        return this;
     }
 
-    public UIButton setLabelColor(Color color) {
+    public UIButton setTextColor(Color color) {
         if (label != null) {
-            this.label.setBackgroundColor(color);
+            this.label.setColor(color);
         }
         return this;
     }
@@ -113,22 +112,21 @@ public class UIButton extends UIComponent {
         return this;
     }
 
-    public UIButton setActionListener(UIActionListener listener) {
+    public void setActionListener(UIActionListener listener) {
         this.actionListener = (listener != null) ? listener : () -> {};
-        return this;
     }
+
     public UIButton setButtonListener(UIButtonListener listener) {
         this.buttonListener = (listener != null) ? listener : new UIButtonListener();
         return this;
     }
+
     public UIButton setText(String text) {
         if (label != null) {
             label.setText(text);
         } else if (image == null && text != null && !text.isEmpty()) {
             // If it was an image button, but now setting text, create a label
-            label = new UILabel(new Vector2i(0, 0), text)
-                    .setBackgroundColor(0x444444)
-                    .setActive(true);
+            label = new UILabel(new Vector2i(0, 0), text).setActive(true);
         }
         return this;
     }
@@ -159,6 +157,22 @@ public class UIButton extends UIComponent {
         boolean currentlyInside = bounds.contains(mousePos);
 
         // --- Handle State Changes ---
+        onHover(currentlyInside, leftMouseButtonDown, leftMouseButtonPressed, leftMouseButtonReleased);
+
+        // If mouse button is released anywhere, reset ignorePressed flag
+        if (leftMouseButtonReleased) {
+            ignorePressed = false;
+        }
+        // If mouse button is simply not down, ensure pressed state is false
+        // (handles case where mouse was released outside)
+        if (!leftMouseButtonDown && pressed) {
+            pressed = false;
+            // If mouse is still inside, trigger hover state again
+            if (inside) buttonListener.entered(this);
+        }
+    }
+
+    private void onHover(boolean currentlyInside, boolean leftMouseButtonDown, boolean leftMouseButtonPressed, boolean leftMouseButtonReleased) {
         if (currentlyInside) {
             if (!inside) { // Mouse Entered
                 log.trace("Mouse entered button {}", this.label != null ? label.text : "ImageButton");
@@ -187,7 +201,7 @@ public class UIButton extends UIComponent {
         } else { // Mouse is Outside
             if (inside) { // Mouse just exited
                 log.trace("Mouse exited button {}", this.label != null ? label.text : "ImageButton");
-                buttonListener.exited(this); // <<< Crucial: Reset color on exit
+                buttonListener.exited(this);
                 this.setBackgroundColor(this.baseColor);
                 // Reset pressed state if mouse was dragged out while pressed
                 if (pressed) {
@@ -198,18 +212,6 @@ public class UIButton extends UIComponent {
             inside = false;
             // Ensure pressed is false if mouse is outside
             if (pressed) pressed = false;
-        }
-
-        // If mouse button is released anywhere, reset ignorePressed flag
-        if (leftMouseButtonReleased) {
-            ignorePressed = false;
-        }
-        // If mouse button is simply not down, ensure pressed state is false
-        // (handles case where mouse was released outside)
-        if (!leftMouseButtonDown && pressed) {
-            pressed = false;
-            // If mouse is still inside, trigger hover state again
-            if (inside) buttonListener.entered(this);
         }
     }
 
@@ -238,7 +240,6 @@ public class UIButton extends UIComponent {
                 g2d.fillRoundRect(x, y, size.x, size.y, arcWidth, arcHeight);
             }
 
-            // 2. Draw Label (if it exists) - This part was missing/incorrect before
             // 2. Draw Label (if it exists)
             if (label != null && label.active && label.text != null && !label.text.isEmpty()) {
                 Font currentFont = (label.getFont() != null) ? label.getFont() : g2d.getFont(); // Use label's font
@@ -254,7 +255,7 @@ public class UIButton extends UIComponent {
                 int labelY = y + (size.y - textHeight) / 2 + textAscent;
 
                 // Set color and draw
-                g2d.setColor(label.backgroundColor);
+                g2d.setColor(this.color);
                 g2d.drawString(label.text, labelX, labelY);
             }
         } finally {

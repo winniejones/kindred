@@ -51,6 +51,14 @@ public class UIProgressBar extends UIComponent {
         this.foregroundColor = foregroundColor;
         return this;
     }
+
+    public int getWidth() {
+        return this.size.x;
+    }
+    public int getHeight() {
+        return this.size.y;
+    }
+
     @Override
     public UIProgressBar setBackgroundColor(Color backgroundColor) {
         this.backgroundColor = backgroundColor;
