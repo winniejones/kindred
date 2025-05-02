@@ -204,46 +204,54 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         int entityId = entityManager.createEntity();
         // Graphics
         String playerSheetPath = "/assets/sprites/player.png"; // TODO: Verify path
-        BufferedImage[][] walkFrames = new BufferedImage[4][3]; // [Direction][Frame]
+        int numDirections = 4;
+        int framesPerDirection = 3;
+        BufferedImage[][] walkFrames = new BufferedImage[numDirections][framesPerDirection];
         boolean playerSpritesLoaded = false;
-        int playerSpriteSize = 32; // TODO: Verify size
-        int framesPerDirection = 3; // TODO: Verify frame count
+        int playerSpriteSize = 32;
+
         try {
             BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
-            if (sheet != null && sheet.getWidth() >= playerSpriteSize * 4 && sheet.getHeight() >= playerSpriteSize * 3) {
+            if (sheet != null && sheet.getWidth() >= playerSpriteSize * numDirections && sheet.getHeight() >= playerSpriteSize * framesPerDirection) {
+                // <<< Nested loop loading for Player Sheet Layout >>>
                 for (int frameRow = 0; frameRow < framesPerDirection; frameRow++) {
-                    for (int dirCol = 0; dirCol < 4; dirCol++) {
-                        walkFrames[dirCol][frameRow] = AssetLoader.getSprite(sheet, dirCol, frameRow, playerSpriteSize, playerSpriteSize);
+                    for (int dirCol = 0; dirCol < numDirections; dirCol++) {
+                        // Map sheet column to AnimationComponent direction constant
+                        int directionIndex;
+                        switch (dirCol) {
+                            case 0: directionIndex = AnimationComponent.LEFT; break;  // Col 0 -> LEFT (1)
+                            case 1: directionIndex = AnimationComponent.DOWN; break;  // Col 1 -> DOWN (0)
+                            case 2: directionIndex = AnimationComponent.UP; break;    // Col 2 -> UP (3)
+                            case 3: directionIndex = AnimationComponent.RIGHT; break; // Col 3 -> RIGHT (2)
+                            default: continue;
+                        }
+                        // Load sprite for this direction and frame
+                        walkFrames[directionIndex][frameRow] = AssetLoader.getSprite(sheet, dirCol, frameRow, playerSpriteSize, playerSpriteSize);
+                        if (walkFrames[directionIndex][frameRow] == null || walkFrames[directionIndex][frameRow].getWidth() <= 1) {
+                             log.warn("Warning: Failed player sprite load (Col:{}, Row:{}) -> Dir:{}", dirCol, frameRow, directionIndex);
+                        }
                     }
                 }
                 playerSpritesLoaded = true;
-            } else {
-                if (sheet != null) { // Sheet loaded but was too small
-                    log.error("Player spritesheet is too small (%dx%d) for expected layout (4x%d sprites of size %dx%d)%n",
-                            sheet.getWidth(),
-                            sheet.getHeight(),
-                            framesPerDirection,
-                            playerSpriteSize,
-                            playerSpriteSize
-                    );
-                } // Error message for sheet == null is handled by loadImage
-            }
-        } catch (Exception e) {
-            log.error("Error loading player spritesheet or extracting sprites: {}", e.getMessage(), e);
-        }
-        // Determine the initial sprite - use first down frame if loaded, otherwise get a placeholder
+                log.debug("Player animation frames loaded using nested loops.");
+            } else { /* Error handling */ }
+        } catch (Exception e) { log.error("Error loading player spritesheet", e); }
+
         BufferedImage initialSprite;
-        if (playerSpritesLoaded && walkFrames[0] != null && walkFrames[0].length > 0 && walkFrames[0][0] != null && walkFrames[0][0].getWidth() > 1) {
-            initialSprite = walkFrames[0][0];
+        // Use Down direction (index 0) frame 0 as default
+        if (playerSpritesLoaded && walkFrames[AnimationComponent.DOWN] != null && walkFrames[AnimationComponent.DOWN][0] != null && walkFrames[AnimationComponent.DOWN][0].getWidth() > 1) {
+            initialSprite = walkFrames[AnimationComponent.DOWN][0];
         } else {
             log.warn("Using placeholder for initial player sprite.");
-            initialSprite = AssetLoader.createPlaceholderImage(playerSpriteSize, playerSpriteSize); // Use placeholder creator
+            initialSprite = AssetLoader.createPlaceholderImage(playerSpriteSize, playerSpriteSize);
         }
+
         // Components
         entityManager.addComponent(entityId, new PositionComponent(spawnX, spawnY));
         entityManager.addComponent(entityId, new VelocityComponent(0, 0));
         entityManager.addComponent(entityId, new SpriteComponent(initialSprite));
-        entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 10));
+        // Use FPS constructor for AnimationComponent
+        entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 7f)); // Example: 7 FPS
         entityManager.addComponent(entityId, new PlayerComponent());
         entityManager.addComponent(entityId, new ColliderComponent(15, 14, 8, 15));
         entityManager.addComponent(entityId, new HealthComponent(100));
@@ -258,43 +266,55 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private int createVillagerNPC(int spawnX, int spawnY) {
         log.debug("Creating Villager NPC at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
-        // --- Graphics ---
-        String sheetPath = "/assets/sprites/blondLong.png";
+        String sheetPath = "/assets/sprites/blondLong.png"; // TODO: Verify path
+        // NPC/Enemy Sheet Layout: Rows=Direction (0=D, 1=L, 2=R, 3=U), Cols=Frame (0-2)
+        int numDirections = 4;
+        int framesPerDirection = 3;
+        BufferedImage[][] walkFrames = new BufferedImage[numDirections][framesPerDirection];
+        boolean spritesLoaded = false;
         int spriteSize = 32;
-        int framesPerDir = 3;
-        BufferedImage[][] walkFrames = new BufferedImage[4][];
-        BufferedImage initialSprite = null;
-        try {
-            List<BufferedImage> downFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 0, framesPerDir, spriteSize, spriteSize, true);
-            List<BufferedImage> leftFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 1, framesPerDir, spriteSize, spriteSize, true);
-            List<BufferedImage> rightFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 2, framesPerDir, spriteSize, spriteSize, true);
-            List<BufferedImage> upFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 3, framesPerDir, spriteSize, spriteSize, true);
 
-            if (!downFrames.isEmpty()) {
-                walkFrames[LEFT] = leftFrames.toArray(new BufferedImage[0]);
-                walkFrames[DOWN] = downFrames.toArray(new BufferedImage[0]);
-                walkFrames[RIGHT] = rightFrames.toArray(new BufferedImage[0]);
-                walkFrames[UP] = upFrames.toArray(new BufferedImage[0]);
-                initialSprite = walkFrames[0][0];
-            }
-        } catch (Exception e) {
-            log.error("Error loading villager sprites", e);
-        }
-        if (initialSprite == null) {
-            initialSprite = AssetLoader.createPlaceholderImage(spriteSize, spriteSize);
-        }
-        // --- Core Components ---
+        try {
+            BufferedImage sheet = AssetLoader.loadImage(sheetPath);
+            if (sheet != null && sheet.getWidth() >= spriteSize * framesPerDirection && sheet.getHeight() >= spriteSize * numDirections) {
+                // <<< Nested loop loading for NPC/Enemy Sheet Layout >>>
+                for (int dirRow = 0; dirRow < numDirections; dirRow++) {
+                    // Map sheet row to AnimationComponent direction constant
+                    int directionIndex;
+                    switch (dirRow) {
+                        case 0: directionIndex = AnimationComponent.DOWN; break;  // Row 0 -> DOWN (0)
+                        case 1: directionIndex = AnimationComponent.LEFT; break;  // Row 1 -> LEFT (1)
+                        case 2: directionIndex = AnimationComponent.RIGHT; break; // Row 2 -> RIGHT (2)
+                        case 3: directionIndex = AnimationComponent.UP; break;    // Row 3 -> UP (3)
+                        default: continue;
+                    }
+                    for (int frameCol = 0; frameCol < framesPerDirection; frameCol++) {
+                        walkFrames[directionIndex][frameCol] = AssetLoader.getSprite(sheet, frameCol, dirRow, spriteSize, spriteSize);
+                         if (walkFrames[directionIndex][frameCol] == null || walkFrames[directionIndex][frameCol].getWidth() <= 1) {
+                             log.warn("Warning: Failed villager sprite load (Col:{}, Row:{}) -> Dir:{}", frameCol, dirRow, directionIndex);
+                        }
+                    }
+                }
+                spritesLoaded = true;
+            } else { /* Error handling */ }
+        } catch (Exception e) { log.error("Error loading villager sprites", e); }
+
+        BufferedImage initialSprite;
+        if (spritesLoaded && walkFrames[AnimationComponent.DOWN][0] != null && walkFrames[AnimationComponent.DOWN][0].getWidth() > 1) {
+            initialSprite = walkFrames[AnimationComponent.DOWN][0];
+        } else { initialSprite = AssetLoader.createPlaceholderImage(spriteSize, spriteSize); }
+
+        // Components
         entityManager.addComponent(entityId, new PositionComponent(spawnX, spawnY));
         entityManager.addComponent(entityId, new VelocityComponent(0, 0));
         entityManager.addComponent(entityId, new SpriteComponent(initialSprite));
-        entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 15));
+        entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 5f));
         entityManager.addComponent(entityId, new ColliderComponent(20, 28, 6, 4));
-        // --- Gameplay Components ---
         entityManager.addComponent(entityId, new HealthComponent(100));
         entityManager.addComponent(entityId, new NPCComponent());
         entityManager.addComponent(entityId, new InteractableComponent(40f));
         entityManager.addComponent(entityId, new NameComponent("Graze"));
-        entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 64f, 3.0f, 8.0f, 0.8f, 100f)); // Added aggroRadius=100
+        entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 64f, 3.0f, 8.0f, 0.8f, 100f));
         log.debug("Villager NPC Entity Created with ID: {}", entityId);
         return entityId;
     }
@@ -302,46 +322,46 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private int createEnemyDeidara(int spawnX, int spawnY) {
         log.debug("Creating Enemy at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
-        // --- Graphics ---
-        String sheetPath = "/assets/sprites/deidara.png";
-        int spriteSize = 32;
-        int framesPerDir = 3;
-        BufferedImage[][] walkFrames = new BufferedImage[4][framesPerDir]; // Reuse structure? Or maybe slime only hops (1 anim)?
-        BufferedImage initialSprite = null;
+        String sheetPath = "/assets/sprites/deidara.png"; // TODO: Verify path
+        int numDirections = 4; int framesPerDirection = 3;
+        BufferedImage[][] walkFrames = new BufferedImage[numDirections][framesPerDirection];
+        boolean spritesLoaded = false; int spriteSize = 32;
         try {
-            List<BufferedImage> downFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 0, framesPerDir, spriteSize, spriteSize, true);
-            List<BufferedImage> leftFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 1, framesPerDir, spriteSize, spriteSize, true);
-            List<BufferedImage> rightFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 2, framesPerDir, spriteSize, spriteSize, true);
-            List<BufferedImage> upFrames = AssetLoader.loadAnimationFrames(sheetPath, 0, 3, framesPerDir, spriteSize, spriteSize, true);
+            BufferedImage sheet = AssetLoader.loadImage(sheetPath);
+            if (sheet != null && sheet.getWidth() >= spriteSize * framesPerDirection && sheet.getHeight() >= spriteSize * numDirections) {
+                 // <<< Nested loop loading for NPC/Enemy Sheet Layout >>>
+                for (int dirRow = 0; dirRow < numDirections; dirRow++) {
+                    int directionIndex;
+                    switch (dirRow) { case 0: directionIndex = AnimationComponent.DOWN; break; case 1: directionIndex = AnimationComponent.LEFT; break; case 2: directionIndex = AnimationComponent.RIGHT; break; case 3: directionIndex = AnimationComponent.UP; break; default: continue; }
+                    for (int frameCol = 0; frameCol < framesPerDirection; frameCol++) {
+                        walkFrames[directionIndex][frameCol] = AssetLoader.getSprite(sheet, frameCol, dirRow, spriteSize, spriteSize);
+                        if (walkFrames[directionIndex][frameCol] == null || walkFrames[directionIndex][frameCol].getWidth() <= 1) { log.warn("Warning: Failed enemy sprite load (Col:{}, Row:{}) -> Dir:{}", frameCol, dirRow, directionIndex); }
+                    }
+                }
+                spritesLoaded = true;
+            } else { /* Error handling */ }
+        } catch (Exception e) { log.error("Error loading enemy sprites", e); }
 
-            if (!downFrames.isEmpty()) {
-                walkFrames[LEFT] = leftFrames.toArray(new BufferedImage[0]);
-                walkFrames[DOWN] = downFrames.toArray(new BufferedImage[0]);
-                walkFrames[RIGHT] = rightFrames.toArray(new BufferedImage[0]);
-                walkFrames[UP] = upFrames.toArray(new BufferedImage[0]);
-                initialSprite = walkFrames[0][0];
-            }
-        } catch (Exception e) {
-            log.error("Error loading slime sprites: ", e.getMessage());
-        }
-        if (initialSprite == null) {
-            initialSprite = AssetLoader.createPlaceholderImage(spriteSize, spriteSize);
-        }
-        // --- Components ---
+        BufferedImage initialSprite;
+        if (spritesLoaded && walkFrames[AnimationComponent.DOWN][0] != null && walkFrames[AnimationComponent.DOWN][0].getWidth() > 1) { initialSprite = walkFrames[AnimationComponent.DOWN][0]; }
+        else { initialSprite = AssetLoader.createPlaceholderImage(spriteSize, spriteSize); }
+
+        // Components
         entityManager.addComponent(entityId, new PositionComponent(spawnX, spawnY));
         entityManager.addComponent(entityId, new VelocityComponent(0, 0));
         entityManager.addComponent(entityId, new SpriteComponent(initialSprite));
-        entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 20));
+        entityManager.addComponent(entityId, new AnimationComponent(walkFrames, 12));
+        // Use frameDelay
         entityManager.addComponent(entityId, new ColliderComponent(24, 16, 4, 16));
         entityManager.addComponent(entityId, new HealthComponent(30));
         entityManager.addComponent(entityId, new EnemyComponent());
         entityManager.addComponent(entityId, new NameComponent("Deidara"));
-        entityManager.addComponent(entityId, new AttackComponent(5f, 35f, 1.5f)); // Dmg=5, Range=35px, Cooldown=1.5s
-        entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 48f, 1.0f, 4.0f, 0.6f, 120f)); // Added aggroRadius=120
-        entityManager.addComponent(entityId, new XPValueComponent(15)); // XP value
-        entityManager.addComponent(entityId, new ParticipantComponent()); // Tracker for XP sharing
+        entityManager.addComponent(entityId, new AttackComponent(5f, 35f, 1.5f));
+        entityManager.addComponent(entityId, new WanderAIComponent(spawnX, spawnY, 48f, 1.0f, 4.0f, 0.6f, 120f));
+        entityManager.addComponent(entityId, new XPValueComponent(15));
+        entityManager.addComponent(entityId, new ParticipantComponent());
         entityManager.addComponent(entityId, new StatsComponent(5, 8, 2, 5));
-        log.debug("Slime Enemy Entity Created with ID: {}", entityId);
+        log.debug("Enemy Entity Created with ID: {}", entityId);
         return entityId;
     }
 
