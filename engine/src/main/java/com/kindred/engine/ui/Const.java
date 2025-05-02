@@ -12,13 +12,13 @@ public interface Const {
     int MARGIN_10 = 10;                 // Margin between elements
     int SIDEBAR_WIDTH = 180;        // Width of the main sidebar
     int CHAT_HEIGHT = 120;          // Height of the chat area
-    int STATS_HEIGHT = 150;         // Height of the stats panel within sidebar
-    int BAR_HEIGHT = 40;            // Height of the button bar within sidebar
-    int SKILLS_HEIGHT = 200;        // Height of the skills panel within sidebar
-    int OPTIONS_HEIGHT = 250;       // Height of the options panel within sidebar
+    int STATS_HEIGHT = 50;         // Height of the stats panel within sidebar
+    int BAR_HEIGHT = 15;            // Height of the button bar within sidebar
+    int SKILLS_HEIGHT = 100;        // Height of the skills panel within sidebar
+    int OPTIONS_HEIGHT = 100;       // Height of the options panel within sidebar
     int INV_SLOT_HEIGHT = 80;       // Example height for inventory panels
     int CHAT_INPUT_HEIGHT = 25;     // Height of the chat input field
-    int CLOSE_BTN_SIZE = 16;     // Size of the 'X' close buttons
+    int CLOSE_BTN_SIZE = 9;     // Size of the 'X' close buttons
     int MENU_BTN_WIDTH = 40;     // Width of main menu buttons (Skills, Options)
     int MENU_BTN_HEIGHT = 10;    // Height of main menu buttons
     int HEALTH_BAR_HEIGHT = 4;      // Height for in-world health bars
@@ -84,7 +84,7 @@ public interface Const {
     Color COLOR_BLUE_950 = new Color(0xFF162456);
 
     // Backgrounds
-    Color COLOR_BG_SIDEBAR = COLOR_STONE_900;
+    Color COLOR_BG_SIDEBAR = COLOR_STONE_700;
     Color COLOR_BG_CHAT = COLOR_STONE_950_70;
     Color COLOR_BG_MINIMAP = Color.BLACK;
     Color COLOR_BG_STATS = COLOR_STONE_700;
@@ -121,6 +121,8 @@ public interface Const {
     Color COLOR_TEXT_HEALTH = COLOR_STONE_100; // Label above health bar
 
     // --- Fonts (Using FONT_Family_Style_Size format where applicable) ---
+    Font FONT_SANS_BOLD_7 = new Font("Arial", Font.BOLD, 7);   // Close button, maybe names
+    Font FONT_SANS_BOLD_8 = new Font("Arial", Font.BOLD, 8);   // Close button, maybe names
     Font FONT_SANS_BOLD_9 = new Font("Arial", Font.BOLD, 9);   // Close button, maybe names
     Font FONT_SANS_BOLD_10 = new Font("Arial", Font.BOLD, 10);   // Close button, maybe names
     Font FONT_SANS_BOLD_12 = new Font("Arial", Font.BOLD, 12);

@@ -1,4 +1,4 @@
-package com.kindred.engine.ui.widgets;
+package com.kindred.engine.ui.panels;
 
 import com.kindred.engine.entity.components.ExperienceComponent;
 import com.kindred.engine.entity.components.HealthComponent;

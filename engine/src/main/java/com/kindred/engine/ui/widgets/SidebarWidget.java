@@ -2,8 +2,13 @@ package com.kindred.engine.ui.widgets;
 
 import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.ui.*;
+import com.kindred.engine.ui.panels.MinimapPanel;
+import com.kindred.engine.ui.panels.PlayerStatsPanel;
 
 import java.awt.*;
+
+import static com.kindred.engine.ui.UIWindowPanel.Placement.END;
+import static com.kindred.engine.ui.UIWindowPanel.Placement.START;
 
 /**
  * A self-contained UI widget representing the main game sidebar.
@@ -53,10 +58,11 @@ public final class SidebarWidget extends UIPanel {
         // --- Player Stats Panel ---
         playerStatsPanel = new PlayerStatsPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.STATS_HEIGHT), em, playerId);
         addComponent(playerStatsPanel);
-        currentY += Const.STATS_HEIGHT + margin;
+        currentY += Const.STATS_HEIGHT;
 
         // --- Button Bar Panel ---
-        buttonBarPanel = new UIPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.BAR_HEIGHT)).setColor(Const.COLOR_BG_BTN_BAR);
+        buttonBarPanel = new UIPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.BAR_HEIGHT))
+                .setBackgroundColor(Const.COLOR_BG_BTN_BAR);
         addComponent(buttonBarPanel);
 
         // --- Create Buttons (without final action yet) and Add to Button Bar ---
@@ -69,13 +75,25 @@ public final class SidebarWidget extends UIPanel {
         currentY += Const.BAR_HEIGHT + margin;
 
         // --- Create Hidden Skills Panel ---
-        skillsPanel = new UIPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.SKILLS_HEIGHT)).setColor(Const.COLOR_BG_SKILLS).setActive(false);
-        skillsPanel.addComponent(createCloseButton(skillsPanel));
+        skillsPanel = new UIWindowPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.SKILLS_HEIGHT))
+                .setColor(Const.COLOR_BG_SKILLS)
+                .setActive(false)
+                .setHeaderHeight(14)
+                .setHeaderColor(Const.COLOR_STONE_900)
+                .setTitleColor(Const.COLOR_TEXT_LIGHT)
+                .setTitleFont(Const.FONT_SANS_BOLD_8)
+                .setTitle("Skills");
         addComponent(skillsPanel);
 
         // --- Create Hidden Options Panel ---
-        optionsPanel = new UIPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.OPTIONS_HEIGHT)).setColor(Const.COLOR_BG_OPTIONS).setActive(false);
-        optionsPanel.addComponent(createCloseButton(optionsPanel));
+        optionsPanel = new UIWindowPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.OPTIONS_HEIGHT))
+                .setColor(Const.COLOR_BG_OPTIONS)
+                .setActive(false)
+                .setHeaderHeight(14)
+                .setHeaderColor(Const.COLOR_STONE_900)
+                .setTitleColor(Const.COLOR_TEXT_LIGHT)
+                .setTitleFont(Const.FONT_SANS_BOLD_8)
+                .setTitle("Options");
         addComponent(optionsPanel);
 
         // TODO: Add Inventory Panels below if needed, updating currentY

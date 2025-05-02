@@ -14,7 +14,7 @@ import java.util.List;
 @Slf4j
 public class UIPanel extends UIComponent {
 
-    private List<UIComponent> components = new ArrayList<>();
+    protected List<UIComponent> components = new ArrayList<>();
     /** Size of the panel. */
     public Vector2i size;
 

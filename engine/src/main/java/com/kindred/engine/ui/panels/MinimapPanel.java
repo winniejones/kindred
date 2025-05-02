@@ -1,4 +1,4 @@
-package com.kindred.engine.ui.widgets;
+package com.kindred.engine.ui.panels;
 
 import com.kindred.engine.ui.Const;
 import com.kindred.engine.ui.UIPanel;
