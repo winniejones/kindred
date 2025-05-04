@@ -20,8 +20,8 @@ public class UIButton extends UIComponent {
     public UILabel label;
     private BufferedImage image = null;
 
-    private final Color colorOnHover;
-    private final Color baseColor;
+    private Color colorOnHover;
+    private Color baseColor;
 
     private UIActionListener actionListener;
 
@@ -90,6 +90,8 @@ public class UIButton extends UIComponent {
         return this;
     }
 
+    public UIButton setHoverColor(Color color) { this.colorOnHover = color; return this; }
+    public UIButton setBaseColor(Color color) { this.baseColor = color; return this; }
     @Override public UIButton setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
     @Override public UIButton setBackgroundColor(int color) { super.setBackgroundColor(color); return this; }
     @Override public UIButton setColor(Color color) { super.setColor(color); return this; }
@@ -237,7 +239,7 @@ public class UIButton extends UIComponent {
                 g2d.drawImage(image, x, y, null);
             } else {
                 g2d.setColor(this.backgroundColor); // Use current color (set by listener)
-                g2d.fillRoundRect(x, y, size.x, size.y, arcWidth, arcHeight);
+                g2d.fillRect(x, y, size.x, size.y);
             }
 
             // 2. Draw Label (if it exists)

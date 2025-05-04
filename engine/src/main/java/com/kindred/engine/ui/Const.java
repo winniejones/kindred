@@ -17,10 +17,10 @@ public interface Const {
     int SKILLS_HEIGHT = 100;        // Height of the skills panel within sidebar
     int OPTIONS_HEIGHT = 100;       // Height of the options panel within sidebar
     int INV_SLOT_HEIGHT = 80;       // Example height for inventory panels
-    int CHAT_INPUT_HEIGHT = 25;     // Height of the chat input field
+    int CHAT_INPUT_HEIGHT = 15;     // Height of the chat input field
     int CLOSE_BTN_SIZE = 9;     // Size of the 'X' close buttons
     int MENU_BTN_WIDTH = 40;     // Width of main menu buttons (Skills, Options)
-    int MENU_BTN_HEIGHT = 10;    // Height of main menu buttons
+    int MENU_BTN_HEIGHT = 15;    // Height of main menu buttons
     int HEALTH_BAR_HEIGHT = 4;      // Height for in-world health bars
     int STATUS_BAR_HEIGHT = 4;      // Height for in-world health bars
     int HEALTH_BAR_WIDTH = 30;      // Width for in-world health bars
@@ -42,15 +42,20 @@ public interface Const {
     * | 90 %         | 10 %    | 25          | --19--      | `#19000000`            |
     * */
 
+    Color COLOR_STONE_50 = new Color(0xFFfafafa);
     Color COLOR_STONE_100_70 = new Color(0xB2f4f4f5, true);
-    Color COLOR_STONE_100 = new Color(0xFFf4f4f5);
-    Color COLOR_STONE_300 = new Color(0xFFd4d4d8);
-    Color COLOR_STONE_500 = new Color(0xFF71717a);
-    Color COLOR_STONE_700 = new Color(0xFF3f3f46);
-    Color COLOR_STONE_900 = new Color(0xFF18181b);
-    Color COLOR_STONE_900_70 = new Color(0xB218181b);
-    Color COLOR_STONE_950 = new Color(0xFF09090b);
-    Color COLOR_STONE_950_70 = new Color(0xB209090b, true);
+    Color COLOR_STONE_100 = new Color(0xFFf5f5f5);
+    Color COLOR_STONE_200 = new Color(0xFFe5e5e5);
+    Color COLOR_STONE_300 = new Color(0xFFd4d4d4);
+    Color COLOR_STONE_400 = new Color(0xFFa3a3a3);
+    Color COLOR_STONE_500 = new Color(0xFF737373);
+    Color COLOR_STONE_600 = new Color(0xFF525252);
+    Color COLOR_STONE_700 = new Color(0xFF404040);
+    Color COLOR_STONE_800 = new Color(0xFF262626);
+    Color COLOR_STONE_900 = new Color(0xFF171717);
+    Color COLOR_STONE_900_70 = new Color(0xB2171717);
+    Color COLOR_STONE_950 = new Color(0xFF0a0a0a);
+    Color COLOR_STONE_950_70 = new Color(0xB20a0a0a, true);
 
     // Red
     Color COLOR_RED_100 = new Color(0xFFfee2e2);
@@ -99,7 +104,7 @@ public interface Const {
     Color COLOR_BG_BTN_HOVER = new Color(0xcdcdcd);
     Color COLOR_BG_BTN_PRESSED = COLOR_RED_700;
 
-    Color COLOR_BG_INPUT = COLOR_STONE_300;
+    Color COLOR_BG_INPUT = COLOR_STONE_800;
     // Bar Backgrounds
     Color COLOR_BG_HEALTH_BAR = COLOR_RED_950; // Dark red background
     Color COLOR_BG_STATUS_XP_BAR = COLOR_YELLOW_950; // Dark yellow background
@@ -134,7 +139,7 @@ public interface Const {
     Font FONT_SANS_PLAIN_12 = new Font("Arial", Font.PLAIN, 12); // Default UI font
 
     // Specific use-case fonts (can reuse above if styles match)
-    Font FONT_BTN = FONT_SANS_PLAIN_9;
+    Font FONT_BTN = FONT_SANS_PLAIN_8;
     Font FONT_CLOSE_BTN = FONT_SANS_BOLD_9;
     Font FONT_NAMEPLATE = FONT_SANS_BOLD_9;
     Font FONT_CHAT_INPUT = FONT_SANS_PLAIN_10;

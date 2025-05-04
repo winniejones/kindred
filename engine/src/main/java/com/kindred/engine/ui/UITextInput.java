@@ -14,16 +14,20 @@ import java.awt.event.KeyEvent;
 public class UITextInput extends UIComponent {
 
     private StringBuilder text = new StringBuilder();
-    public Vector2i size; // Explicit size required
+    public Vector2i size;
     private Font font;
     private boolean focused = false;
     private int maxLength = 50; // Example max length
     private String submittedText = null; // Stores text submitted via Enter
 
+    private Color borderLightColor = Const.COLOR_STONE_400;
+    private Color borderDarkColor = Const.COLOR_STONE_700;
+    private int innerBorderSize = 1;
+
     // Cursor blinking state (simple example)
     private boolean showCursor = true;
     private float cursorBlinkTimer = 0f;
-    private final float cursorBlinkRate = 0.5f; // Blink interval in seconds
+    private final float cursorBlinkRate = 0.5f;
 
     public UITextInput(Vector2i position, Vector2i size) {
         super(position);
@@ -31,12 +35,16 @@ public class UITextInput extends UIComponent {
             throw new IllegalArgumentException("UITextInput size must be positive.");
         }
         this.size = size;
-        this.font = new Font("Arial", Font.PLAIN, 12);
+        this.font = new Font("Arial", Font.PLAIN, 8);
         this.color = Color.BLACK; // Text color
-        this.backgroundColor = Color.WHITE; // Background color
+        this.backgroundColor = Const.COLOR_STONE_600; // Background color
     }
 
-    public UITextInput setSize(Vector2i size) { this.size = size; return this; }
+    public UITextInput setSize(Vector2i size) {
+        this.size = size;
+        return this;
+    }
+
     public UITextInput setSize(int x, int y) {
         if (this.size == null) {
             this.size = new Vector2i(x, y);
@@ -45,9 +53,21 @@ public class UITextInput extends UIComponent {
         }
         return this;
     }
-    public UITextInput setFont(Font font) { this.font = font; return this; }
-    public UITextInput setMaxLength(int maxLength) { this.maxLength = Math.max(1, maxLength); return this; }
-    public String getText() { return text.toString(); }
+
+    public UITextInput setFont(Font font) {
+        this.font = font;
+        return this;
+    }
+
+    public UITextInput setMaxLength(int maxLength) {
+        this.maxLength = Math.max(1, maxLength);
+        return this;
+    }
+
+    public String getText() {
+        return text.toString();
+    }
+
     public UITextInput setText(String newText) {
         if (newText == null) {
             text = new StringBuilder();
@@ -68,7 +88,13 @@ public class UITextInput extends UIComponent {
         }
         return this;
     }
-    public boolean isFocused() { return focused; }
+
+    public UITextInput setInnerBorderSize(int size) { this.innerBorderSize = Math.max(0, size); return this; }
+    public UITextInput setBorderColors(Color light, Color dark) { this.borderLightColor = light; this.borderDarkColor = dark; return this; }
+
+    public boolean isFocused() {
+        return focused;
+    }
 
     /**
      * Handles a key press event IF this input field has focus.
@@ -120,13 +146,63 @@ public class UITextInput extends UIComponent {
         return submitted;
     }
 
-    @Override public UITextInput setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
-    @Override public UITextInput setBackgroundColor(int color) { super.setBackgroundColor(color); return this; }
-    @Override public UITextInput setColor(Color color) { super.setColor(color); return this; }
-    @Override public UITextInput setColor(int color) { super.setColor(color); return this; }
-    @Override public UITextInput setActive(boolean active) { super.setActive(active); return this; }
-    @Override public UITextInput setPosition(Vector2i position) { super.setPosition(position); return this; }
-    @Override public UITextInput setPosition(int x, int y) { super.setPosition(x, y); return this; }
+    // --- Internal Logic ---
+    private void deriveBorderColors(Color base) {
+        if (base == null) {
+            this.borderLightColor = Color.LIGHT_GRAY;
+            this.borderDarkColor = Color.DARK_GRAY;
+        } else {
+            // Simple brighter/darker might not give the exact gray scale look
+            // Use fixed shades for consistency?
+            this.borderLightColor = Const.COLOR_STONE_300; // Example light border
+            this.borderDarkColor = Const.COLOR_STONE_900;  // Example dark border
+            // Or derive:
+            // this.borderLightColor = base.brighter();
+            // this.borderDarkColor = base.darker().darker(); // Make darker more pronounced
+        }
+    }
+
+    @Override
+    public UITextInput setBackgroundColor(Color color) {
+        super.setBackgroundColor(color);
+        return this;
+    }
+
+    @Override
+    public UITextInput setBackgroundColor(int color) {
+        super.setBackgroundColor(color);
+        return this;
+    }
+
+    @Override
+    public UITextInput setColor(Color color) {
+        super.setColor(color);
+        return this;
+    }
+
+    @Override
+    public UITextInput setColor(int color) {
+        super.setColor(color);
+        return this;
+    }
+
+    @Override
+    public UITextInput setActive(boolean active) {
+        super.setActive(active);
+        return this;
+    }
+
+    @Override
+    public UITextInput setPosition(Vector2i position) {
+        super.setPosition(position);
+        return this;
+    }
+
+    @Override
+    public UITextInput setPosition(int x, int y) {
+        super.setPosition(x, y);
+        return this;
+    }
 
     @Override
     public void update(InputState input, float deltaTime) {
@@ -153,6 +229,8 @@ public class UITextInput extends UIComponent {
         Vector2i absolutePos = getAbsolutePosition();
         int x = absolutePos.x;
         int y = absolutePos.y;
+        int w = size.x;
+        int h = size.y;
 
         // Store original settings
         Color originalColor = g.getColor();
@@ -160,38 +238,64 @@ public class UITextInput extends UIComponent {
         Rectangle originalClip = g.getClipBounds();
 
         try {
-            // Draw background
+            // 1. Draw Background
             g.setColor(this.backgroundColor != null ? this.backgroundColor : Color.WHITE);
-            g.fillRect(x, y, size.x, size.y);
+            g.fillRect(x, y, w, h);
 
-            // Set clip bounds
-            g.setClip(x + 2, y, size.x - 4, size.y); // Add padding to clip
+            // 2. Draw Inset Border (Dark on Top/Left, Light on Bottom/Right)
+            if (innerBorderSize > 0) {
+                // Ensure border colors are set
+                 if (borderLightColor == null || borderDarkColor == null) deriveBorderColors(this.backgroundColor);
 
-            // Draw text
+                g.setColor(borderDarkColor); // Dark color for top/left shadow
+                for (int i = 0; i < innerBorderSize; i++) {
+                    g.drawLine(x + i, y + i, x + w - 1 - i, y + i); // Top line
+                    g.drawLine(x + i, y + i + 1, x + i, y + h - 1 - i); // Left line
+                }
+
+                g.setColor(borderLightColor); // Light color for bottom/right highlight
+                for (int i = 0; i < innerBorderSize; i++) {
+                    // Start 1 pixel further in to avoid overlapping corners perfectly
+                    g.drawLine(x + i + 1, y + h - 1 - i, x + w - 1 - i, y + h - 1 - i); // Bottom line
+                    g.drawLine(x + w - 1 - i, y + i + 1, x + w - 1 - i, y + h - 2 - i); // Right line
+                }
+            }
+
+            // 3. Prepare for Text/Cursor (inside the border)
+            int padding = innerBorderSize + 2; // Padding inside border
+            int contentX = x + padding;
+            int contentY = y + innerBorderSize; // Text baseline relative to top border
+            int contentW = w - padding * 2;
+            int contentH = h - innerBorderSize * 2;
+
+            // Set clip bounds to content area
+            g.setClip(contentX, contentY, contentW, contentH);
+
+            // 4. Draw Text
             g.setFont(this.font);
             g.setColor(this.color);
             FontMetrics fm = g.getFontMetrics();
-            int textY = y + (size.y - fm.getHeight()) / 2 + fm.getAscent(); // Center text vertically
-            int textX = x + 2; // Small padding from left
+            // Vertically center text within the available content height
+            int textY = y + innerBorderSize + (contentH - fm.getHeight()) / 2 + fm.getAscent();
 
             String currentText = "";
             synchronized(text) { // Synchronize access while rendering
-                currentText = text.toString(); // Get text safely
-                g.drawString(currentText, textX, textY);
+                currentText = text.toString();
+                g.drawString(currentText, contentX, textY);
             }
-             // <<< Log text rendering details >>>
-             log.trace("Rendering TextInput: AbsPos=({}, {}), Size=({}, {}), Text='{}', DrawPos=({}, {})", x, y, size.x, size.y, currentText, textX, textY);
+            log.trace("Rendering TextInput: AbsPos=({}, {}), Text='{}', DrawPos=({}, {})", x, y, currentText, contentX, textY);
 
-
-            // Draw cursor if focused and blinking allows
+            // 5. Draw Cursor
             if (focused && showCursor) {
-                int cursorX = textX + fm.stringWidth(currentText); // Position after text
-                int cursorY1 = textY - fm.getAscent() + 1;
-                int cursorY2 = textY + fm.getDescent();
-                g.setColor(this.color); // Use text color for cursor
-                g.drawLine(cursorX, cursorY1, cursorX, cursorY2);
-                // <<< Log cursor drawing >>>
-                log.trace("Drawing cursor at ({}, {}) to ({}, {})", cursorX, cursorY1, cursorX, cursorY2);
+                int cursorX = contentX + fm.stringWidth(currentText); // Position after text
+                // Ensure cursor stays within clip bounds
+                if (cursorX < contentX + contentW) {
+                    int cursorY1 = textY - fm.getAscent() + 1;
+                    int cursorY2 = textY + fm.getDescent();
+                    g.setColor(this.color); // Use text color for cursor
+                    g.drawLine(cursorX, cursorY1, cursorX, cursorY2);
+                    log.trace("Drawing cursor at ({}, {}) to ({}, {})", cursorX, cursorY1, cursorX, cursorY2);
+                }
             }
 
         } finally {

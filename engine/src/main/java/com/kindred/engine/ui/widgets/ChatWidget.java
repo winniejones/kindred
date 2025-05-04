@@ -42,10 +42,9 @@ public class ChatWidget extends UIPanel {
 
         // --- Create and Add Chat Input Field ---
         chatInput = new UITextInput(
-                new Vector2i(margin, margin + areaHeight + margin), // Below chat area
+                new Vector2i(margin, Const.CHAT_HEIGHT - Const.CHAT_INPUT_HEIGHT - Const.MARGIN_2), // Below chat area
                 new Vector2i(contentWidth, inputHeight)
         );
-        chatInput.setBackgroundColor(Const.COLOR_BG_INPUT);
         // chatInput.setFont(Const.DEFAULT_FONT); // Set font if needed
         addComponent(chatInput);
     }

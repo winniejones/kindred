@@ -66,7 +66,7 @@ public final class SidebarWidget extends UIPanel {
         addComponent(buttonBarPanel);
 
         // --- Create Buttons (without final action yet) and Add to Button Bar ---
-        int btnY = 2;
+        int btnY = 0;
         // Create buttons with a placeholder action initially, store references
         skillsButton = createMenuButton("Skills", new Vector2i(2, btnY), () -> {});
         optionsButton = createMenuButton("Options", new Vector2i(2   * 2 + Const.MENU_BTN_WIDTH, btnY), () -> {});
@@ -78,7 +78,7 @@ public final class SidebarWidget extends UIPanel {
         skillsPanel = new UIWindowPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.SKILLS_HEIGHT))
                 .setColor(Const.COLOR_BG_SKILLS)
                 .setActive(false)
-                .setHeaderHeight(14)
+                .setHeaderHeight(18)
                 .setHeaderColor(Const.COLOR_STONE_900)
                 .setTitleColor(Const.COLOR_TEXT_LIGHT)
                 .setTitleFont(Const.FONT_SANS_BOLD_8)
@@ -104,8 +104,10 @@ public final class SidebarWidget extends UIPanel {
     private UIButton createMenuButton(String text, Vector2i pos, Runnable action) {
         return new UIButton(pos, new Vector2i(Const.MENU_BTN_WIDTH, Const.MENU_BTN_HEIGHT), text, action::run)
                 .setFont(Const.FONT_BTN)
-                .setColor(Color.BLACK)
-                .setBackgroundColor(Const.COLOR_BG_BTN_DEFAULT);
+                .setColor(Const.COLOR_STONE_100)
+                .setHoverColor(Const.COLOR_STONE_500)
+                .setBaseColor(Const.COLOR_STONE_700)
+                .setBackgroundColor(Const.COLOR_STONE_700);
         // TODO: Set hover/press colors using constants?
     }
 

@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
 
-import static com.kindred.engine.ui.UIWindowPanel.Placement.CENTER;
 import static com.kindred.engine.ui.UIWindowPanel.Placement.START;
 
 /**
@@ -15,21 +14,21 @@ import static com.kindred.engine.ui.UIWindowPanel.Placement.START;
 @Slf4j
 public class UIWindowPanel extends UIPanel {
 
-    // Style properties
     private Color borderLightColor;
     private Color borderDarkColor;
-    private Color headerColor; // Optional header background
+    private Color headerColor;
     private String title = "";
     private Font titleFont;
     private Color titleColor;
     private Placement titlePlacement = START;
-    private int headerHeight = 0; // 0 means no header
-    private int borderSize = 2;   // Thickness of the 3D border
+    private int headerHeight = 0;
+    private int outerBorderSize = 2;
+    private int innerBorderSize = 1;
+    private UIButton closeButton;
 
     public enum Placement {
         START, CENTER, END;
     }
-    private UIButton closeButton;
 
     /**
      * Creates a new UIWindowPanel.
@@ -42,7 +41,7 @@ public class UIWindowPanel extends UIPanel {
         // Default styling (can be overridden with setters)
         setColor(Const.COLOR_STONE_700); // Use a base background color (e.g., dark stone)
         setBorderColors(Const.COLOR_STONE_500, Const.COLOR_STONE_900); // Lighter/Darker shades
-        setHeaderColor(Const.COLOR_BLUE_700); // Example: Blue header
+        setHeaderColor(Const.COLOR_STONE_700); // Example: Blue header
         setTitleColor(Color.WHITE);
         setTitleFont(Const.FONT_SANS_BOLD_12);
         setHeaderHeight(20); // Example header height
@@ -53,12 +52,11 @@ public class UIWindowPanel extends UIPanel {
 
     /** Helper method to create and add the close button */
     private void addInternalCloseButton() {
-        // Only add if header exists and size is reasonable
-        if (headerHeight > 0 && size.x > Const.CLOSE_BTN_SIZE + borderSize * 2 + 6 && size.y > Const.CLOSE_BTN_SIZE + borderSize * 2) {
+        if (headerHeight > 0 && size.x > Const.CLOSE_BTN_SIZE + outerBorderSize * 2 + 6 && size.y > Const.CLOSE_BTN_SIZE + outerBorderSize * 2) {
             Vector2i btnSize = new Vector2i(Const.CLOSE_BTN_SIZE, Const.CLOSE_BTN_SIZE);
             // Position relative to the panel's top-right corner, inside border, centered in header vertically
-            int btnX = this.size.x - btnSize.x - borderSize - 3; // 3px padding from right border
-            int btnY = borderSize + (headerHeight - Const.CLOSE_BTN_SIZE * 2) / 2; // Center vertically in header area
+            int btnX = this.size.x - btnSize.x - outerBorderSize - 3; // 3px padding from right border
+            int btnY = outerBorderSize + (headerHeight - Const.CLOSE_BTN_SIZE * 2) / 2; // Center vertically in header area
             Vector2i btnPos = new Vector2i(btnX, btnY);
 
             // Create the button, action sets this panel's active state to false
@@ -73,48 +71,16 @@ public class UIWindowPanel extends UIPanel {
         }
     }
 
-    // --- Fluent Setters for Styling ---
-
-    public UIWindowPanel setBorderSize(int size) {
-        this.borderSize = Math.max(1, size);
-        return this;
-    }
-
-    public UIWindowPanel setBorderColors(Color light, Color dark) {
-        this.borderLightColor = light;
-        this.borderDarkColor = dark;
-        return this;
-    }
-
-    public UIWindowPanel setHeaderHeight(int height) {
-        this.headerHeight = Math.max(0, height);
-        return this;
-    }
-
-    public UIWindowPanel setHeaderColor(Color color) {
-        this.headerColor = color;
-        return this;
-    }
-
-    public UIWindowPanel setTitle(String title) {
-        this.title = (title != null) ? title : "";
-        return this;
-    }
-
-    public UIWindowPanel setTitlePlacement(Placement placement) {
-        this.titlePlacement = (placement != null) ? placement : START;
-        return this;
-    }
-
-    public UIWindowPanel setTitleFont(Font font) {
-        this.titleFont = font;
-        return this;
-    }
-
-    public UIWindowPanel setTitleColor(Color color) {
-        this.titleColor = color;
-        return this;
-    }
+    // --- Fluent Setters ---
+    public UIWindowPanel setOuterBorderSize(int size) { this.outerBorderSize = Math.max(1, size); return this; }
+    public UIWindowPanel setInnerBorderSize(int size) { this.innerBorderSize = Math.max(0, size); return this; }
+    public UIWindowPanel setBorderColors(Color light, Color dark) { this.borderLightColor = light; this.borderDarkColor = dark; return this; }
+    public UIWindowPanel setHeaderHeight(int height) { this.headerHeight = Math.max(0, height); return this; }
+    public UIWindowPanel setHeaderColor(Color color) { this.headerColor = color; return this; }
+    public UIWindowPanel setTitle(String title) { this.title = (title != null) ? title : ""; return this; }
+    public UIWindowPanel setTitlePlacement(Placement placement) { this.titlePlacement = (placement != null) ? placement : START; return this; }
+    public UIWindowPanel setTitleFont(Font font) { this.titleFont = font; return this; }
+    public UIWindowPanel setTitleColor(Color color) { this.titleColor = color; return this; }
 
     // Override background color setter to maybe adjust borders automatically? (Optional)
     @Override
@@ -126,11 +92,10 @@ public class UIWindowPanel extends UIPanel {
         }
         // Optionally set header color based on background if not set
         if (this.headerColor == null) {
-            this.headerColor = color.darker(); // Example derivation
+            this.headerColor = backgroundColor.darker(); // Example derivation
         }
         return this;
     }
-
     @Override public UIWindowPanel setBackgroundColor(Color color) { super.setBackgroundColor(color); return this; }
     @Override public UIWindowPanel setPosition(Vector2i position) { super.setPosition(position); return this; }
     @Override public UIWindowPanel setPosition(int x, int y) { super.setPosition(x, y); return this; }
@@ -153,15 +118,16 @@ public class UIWindowPanel extends UIPanel {
     /** Calculates the top-left corner of the content area (inside borders/header). */
     public Vector2i getContentAreaPosition() {
         Vector2i absPos = getAbsolutePosition();
-        absPos.x += borderSize;
-        absPos.y += borderSize + headerHeight;
+        absPos.x += outerBorderSize + innerBorderSize;
+        absPos.y += outerBorderSize + headerHeight + innerBorderSize;
         return absPos;
     }
 
     /** Calculates the size of the content area. */
     public Vector2i getContentAreaSize() {
-        int contentWidth = Math.max(0, size.x - borderSize * 2);
-        int contentHeight = Math.max(0, size.y - borderSize * 2 - headerHeight);
+        int borderTotal = outerBorderSize + innerBorderSize;
+        int contentWidth = Math.max(0, size.x - borderTotal * 2);
+        int contentHeight = Math.max(0, size.y - borderTotal * 2 - headerHeight);
         return new Vector2i(contentWidth, contentHeight);
     }
 
@@ -173,10 +139,11 @@ public class UIWindowPanel extends UIPanel {
     @Override
     public void update(InputState input, float deltaTime) {
         if (!active) return;
-        Vector2i contentAreaPos = getContentAreaPosition(); // Offset for most children
-        Vector2i headerAreaPos = getAbsolutePosition(); // Offset for header buttons
-        headerAreaPos.x += borderSize;
-        headerAreaPos.y += borderSize;
+        Vector2i contentAreaOriginOffset = getAbsolutePosition(); // Get panel's screen origin
+        contentAreaOriginOffset.x += outerBorderSize + innerBorderSize; // Adjust for borders/header/inner border
+        contentAreaOriginOffset.y += outerBorderSize + headerHeight + innerBorderSize;
+
+        Vector2i headerButtonOffset = getAbsolutePosition(); // Offset for close button is just panel origin
 
         // Update children
         for (int i = components.size() - 1; i >= 0; i--) {
@@ -184,9 +151,9 @@ public class UIWindowPanel extends UIPanel {
             if (component.active) {
                 // Buttons directly in header use header offset, others use content offset
                 if (component == closeButton) { // Check if it's the close button
-                     component.setOffset(getAbsolutePosition()); // Close button relative to panel corner
+                     component.setOffset(headerButtonOffset); // Close button relative to panel corner
                 } else {
-                     component.setOffset(contentAreaPos); // Other children relative to content area
+                     component.setOffset(contentAreaOriginOffset); // Other children relative to content area
                 }
                 component.update(input, deltaTime);
             }
@@ -210,66 +177,115 @@ public class UIWindowPanel extends UIPanel {
 
         // Ensure colors are set
         if (borderLightColor == null || borderDarkColor == null) deriveBorderColors(this.color);
-        if (headerColor == null) headerColor = (this.color != null) ? this.color.brighter() : Color.GRAY;
+        if (headerColor == null) headerColor = (this.backgroundColor != null) ? this.backgroundColor.darker() : Color.GRAY;
         if (titleColor == null) titleColor = Color.WHITE;
-        if (titleFont == null) titleFont = Const.FONT_SANS_BOLD_12; // Use a default
+        if (titleFont == null) titleFont = Const.FONT_SANS_BOLD_12;
 
-        // --- Draw Background ---
-        if (this.color != null) {
-            g.setColor(this.color);
-            g.fillRect(x + borderSize, y + borderSize + headerHeight, w - borderSize * 2, h - borderSize * 2 - headerHeight);
+        // Define content area bounds (inside outer border and header)
+        int contentX = x + outerBorderSize;
+        int contentY = y + outerBorderSize + headerHeight;
+        int contentW = w - outerBorderSize * 2;
+        int contentH = h - outerBorderSize * 2 - headerHeight;
+
+        // --- Draw Background for Content Area ---
+        if (this.color != null && contentW > 0 && contentH > 0) {
+             g.setColor(this.color);
+             g.fillRect(contentX, contentY, contentW, contentH);
         }
 
         // --- Draw Header ---
-        if (headerHeight > 0) {
-            g.setColor(headerColor);
-            g.fillRect(x + borderSize, y + borderSize, w - borderSize * 2, headerHeight);
-            // Draw Title Text (centered in header)
-            if (!title.isEmpty()) {
-                Font oldFont = g.getFont();
-                Color oldColor = g.getColor();
-                g.setFont(titleFont);
-                g.setColor(titleColor);
-                FontMetrics fm = g.getFontMetrics();
-                int titleWidth = fm.stringWidth(title);
-                int titleX = getTitleX(x, w, titleWidth);
-                int titleY = y + borderSize + (headerHeight - fm.getHeight()) / 2 + fm.getAscent();
-                g.drawString(title, titleX, titleY);
-                g.setFont(oldFont);
-                g.setColor(oldColor);
-            }
+        if (headerHeight > 0 && contentW > 0) {
+            renderHeader(g, contentX, y, contentW, x, w);
         }
 
-        // --- Draw 3D Borders ---
+        // --- Draw Outer Borders ---
+        renderOuterLines(g, x, y, w, h);
+
+        // --- Draw Inner Content Frame ---
+        if (innerBorderSize > 0 && contentW > 0 && contentH > 0) {
+            renderInnerLines(g, contentX, contentY, contentW, contentH);
+        }
+
+        // --- Render Child Components ---
+        renderChildComponents(g, contentX, contentY, contentW, contentH);
+    }
+
+    private void renderHeader(Graphics g, int contentX, int y, int contentW, int x, int w) {
+        g.setColor(headerColor);
+        g.fillRect(contentX, y + outerBorderSize, contentW, headerHeight);
+        // Draw Title Text
+        if (!title.isEmpty()) {
+            Font oldFont = g.getFont();
+            Color oldColor = g.getColor();
+            g.setFont(titleFont);
+            g.setColor(titleColor);
+            FontMetrics fm = g.getFontMetrics();
+            int titleWidth = fm.stringWidth(title);
+            int titleX = getTitleX(x, w, titleWidth);
+            int titleY = y + outerBorderSize + (headerHeight - fm.getHeight()) / 2 + fm.getAscent();
+            g.drawString(title, titleX, titleY);
+            g.setFont(oldFont);
+            g.setColor(oldColor);
+        }
+    }
+
+    private void renderChildComponents(Graphics g, int contentX, int contentY, int contentW, int contentH) {
+        Rectangle originalClip = g.getClipBounds();
+        try {
+             // Clip children to the content area (inside the inner border)
+             g.setClip(contentX + innerBorderSize, contentY + innerBorderSize,
+                       contentW - innerBorderSize * 2, contentH - innerBorderSize * 2);
+
+             for (UIComponent component : components) {
+                 if (component.active) {
+                     // Special case: Render close button even if slightly outside content clip (it's in header)
+                     if (component == closeButton) {
+                          Graphics gButton = g.create(); // Create copy for button
+                          gButton.setClip(originalClip); // Restore original clip for button rendering
+                          try {
+                              component.render(gButton);
+                          } finally {
+                              gButton.dispose();
+                          }
+                     } else {
+                          // Render other components within the content clip
+                          component.render(g);
+                     }
+                 }
+             }
+        } finally {
+             // Restore original clip
+             g.setClip(originalClip);
+        }
+    }
+
+    private void renderInnerLines(Graphics g, int contentX, int contentY, int contentW, int contentH) {
+        // Use opposite colors for inset effect
+        g.setColor(borderDarkColor); // Dark for top/left inset lines
+        for(int i = 0; i < innerBorderSize; i++) {
+             g.drawLine(contentX + i, contentY + i, contentX + contentW - 1 - i, contentY + i); // Inner Top
+             g.drawLine(contentX + i, contentY + i + 1, contentX + i, contentY + contentH - 1 - i); // Inner Left
+        }
+
+        g.setColor(borderLightColor); // Light for bottom/right inset lines
+        for(int i = 0; i < innerBorderSize; i++) {
+            g.drawLine(contentX + i + 1, contentY + contentH - 1 - i, contentX + contentW - 1 - i, contentY + contentH - 1 - i); // Inner Bottom
+            g.drawLine(contentX + contentW - 1 - i, contentY + i + 1, contentX + contentW - 1 - i, contentY + contentH - 2 - i); // Inner Right
+       }
+    }
+
+    private void renderOuterLines(Graphics g, int x, int y, int w, int h) {
         g.setColor(borderLightColor);
-        // Top border lines
-        for(int i = 0; i < borderSize; i++) {
+        for(int i = 0; i < outerBorderSize; i++) {
             g.drawLine(x + i, y + i, x + w - 1 - i, y + i); // Top
             g.drawLine(x + i, y + i + 1, x + i, y + h - 1 - i); // Left (start one pixel down)
         }
 
         g.setColor(borderDarkColor);
-        // Bottom border lines
-        for(int i = 0; i < borderSize; i++) {
+        for(int i = 0; i < outerBorderSize; i++) {
             g.drawLine(x + i + 1, y + h - 1 - i, x + w - 1 - i, y + h - 1 - i); // Bottom
             g.drawLine(x + w - 1 - i, y + i + 1, x + w - 1 - i, y + h - 2 - i); // Right (adjust start/end Y)
         }
-
-
-        // --- Render Child Components ---
-        // Children render themselves relative to the content area origin passed via setOffset
-        // Need to set clip for children so they don't draw outside the content area
-        Rectangle originalClip = g.getClipBounds();
-        // Clip includes header and content area, but stays within outer border
-        g.setClip(x + borderSize, y + borderSize, w - borderSize * 2, h - borderSize * 2);
-
-        for (UIComponent component : components) {
-            if (component.active) {
-                component.render(g);
-            }
-        }
-        // Restore original clip
-        g.setClip(originalClip);
     }
 
     private int getTitleX(int x, int w, int titleWidth) {
@@ -278,10 +294,10 @@ public class UIWindowPanel extends UIPanel {
                 return x + Const.MARGIN_2 + 2;
             }
             case END -> {
-                return x + borderSize + (w - borderSize * 2 - titleWidth) - Const.MARGIN_2;
+                return x + outerBorderSize + (w - outerBorderSize * 2 - titleWidth) - Const.MARGIN_2;
             }
             default -> {
-                return x + borderSize + (w - borderSize * 2 - titleWidth) / 2;
+                return x + outerBorderSize + (w - outerBorderSize * 2 - titleWidth) / 2;
             }
         }
     }
