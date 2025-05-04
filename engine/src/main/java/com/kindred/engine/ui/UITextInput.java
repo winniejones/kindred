@@ -20,6 +20,7 @@ public class UITextInput extends UIComponent {
     private int maxLength = 50; // Example max length
     private String submittedText = null; // Stores text submitted via Enter
 
+    private Color backgroundOnFocusColor = Const.COLOR_STONE_800;
     private Color borderLightColor = Const.COLOR_STONE_400;
     private Color borderDarkColor = Const.COLOR_STONE_700;
     private int innerBorderSize = 1;
@@ -36,7 +37,7 @@ public class UITextInput extends UIComponent {
         }
         this.size = size;
         this.font = new Font("Arial", Font.PLAIN, 8);
-        this.color = Color.BLACK; // Text color
+        this.color = Const.COLOR_STONE_100; // Text color
         this.backgroundColor = Const.COLOR_STONE_600; // Background color
     }
 
@@ -116,13 +117,16 @@ public class UITextInput extends UIComponent {
                 // Submit the text (e.g., send chat message)
                 submittedText = text.toString();
                 log.info("Text Input Submitted: '{}'", submittedText);
-                // Clear the input field after submission
-                // text.setLength(0); // Clear immediately
-                // Or handle clearing after processing submittedText elsewhere
             } else if (keyCode == KeyEvent.VK_ESCAPE) {
-                // Optional: Lose focus on Escape?
-                // setFocus(false);
-            } else if (!Character.isISOControl(keyChar) && text.length() < maxLength) {
+                setFocus(false);
+            } else if (keyChar != KeyEvent.CHAR_UNDEFINED
+                && !Character.isISOControl(keyChar)
+                && keyCode != KeyEvent.VK_SHIFT
+                && keyCode != KeyEvent.VK_CONTROL
+                && keyCode != KeyEvent.VK_ALT
+                && keyCode != KeyEvent.VK_META
+                && text.length() < maxLength
+            ) {
                 // Append printable characters if within length limit
                 text.append(keyChar);
             }
@@ -208,6 +212,15 @@ public class UITextInput extends UIComponent {
     public void update(InputState input, float deltaTime) {
         if (!active) return;
 
+        // --- New: focus-on-click logic ---
+        if (input.isButtonPressed(InputState.MOUSE_LEFT) ) {
+            Point m = input.getMousePosition();
+            Vector2i abs = getAbsolutePosition();
+            boolean insideX = m.x >= abs.x && m.x <= abs.x + size.x;
+            boolean insideY = m.y >= abs.y && m.y <= abs.y + size.y;
+            setFocus(insideX && insideY);
+        }
+
         // Update cursor blink state if focused
         if (focused) {
             // TODO: Use deltaTime passed from game loop for accurate timing
@@ -239,7 +252,11 @@ public class UITextInput extends UIComponent {
 
         try {
             // 1. Draw Background
-            g.setColor(this.backgroundColor != null ? this.backgroundColor : Color.WHITE);
+            if(focused) {
+                g.setColor(this.backgroundOnFocusColor);
+            } else {
+                g.setColor(this.backgroundColor != null ? this.backgroundColor : Color.WHITE);
+            }
             g.fillRect(x, y, w, h);
 
             // 2. Draw Inset Border (Dark on Top/Left, Light on Bottom/Right)

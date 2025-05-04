@@ -9,6 +9,7 @@ import java.util.Set;
  * Holds the state of input devices (primarily mouse for UI) for a single frame/update cycle.
  */
 public class InputState {
+    public static final int MOUSE_LEFT = java.awt.event.MouseEvent.BUTTON1;
 
     // Mouse Position
     public int mouseX = -1;

@@ -10,19 +10,17 @@ import com.kindred.engine.level.MapLoader;
 import com.kindred.engine.level.SpawnPoint;
 import com.kindred.engine.render.Screen;
 import com.kindred.engine.resource.AssetLoader;
-import com.kindred.engine.ui.*;
+import com.kindred.engine.ui.UIManager;
 import com.kindred.engine.ui.layout.DefaultGameUILayout;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.swing.JFrame;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.List;
-
-import static com.kindred.engine.resource.AssetLoader.*;
 
 @Slf4j
 public class GameMain extends Canvas implements Runnable, MouseMotionListener {
@@ -82,7 +80,9 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // --- Window Setup ---
         setPreferredSize(new Dimension(WINDOW_WIDTH * SCALE, WINDOW_HEIGHT * SCALE));
         setFocusable(true); // Allow canvas to receive keyboard input
-        requestFocus(); // Request focus immediately
+        setFocusTraversalKeysEnabled(false);
+        requestFocusInWindow();
+        //requestFocus(); // Request focus immediately
 
         // --- Rendering Buffer Setup ---
         image = new BufferedImage(WINDOW_WIDTH, WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
@@ -496,7 +496,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
                 log.info("Chat Submitted: {}", submitted);
                 gameUILayout.addChatLine("You: " + submitted); // Add line via layout
                 // TODO: Send message to server / process chat command
-                gameUILayout.unfocusChatInput(); // Unfocus via layout
+                //gameUILayout.unfocusChatInput(); // Unfocus via layout
             }
         }
         // ---------------------------
@@ -573,6 +573,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         game.frame.pack();
         game.frame.setLocationRelativeTo(null);
         game.frame.setVisible(true);
+        game.requestFocusInWindow();
         game.start();
     }
 
@@ -660,15 +661,19 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         @Override
         public void keyPressed(KeyEvent e) {
             int keyCode = e.getKeyCode();
+            boolean ctrl = (e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0;
             boolean consumed = false; // Flag to check if UI consumed the event
 
             // --- Handle Chat Input Focus (Ctrl+Enter) ---
-            if (e.isControlDown() && keyCode == KeyEvent.VK_ENTER) {
-                if (gameUILayout != null && !gameUILayout.isChatInputFocused()) {
+            if (ctrl && keyCode == KeyEvent.VK_ENTER) {
+                if (gameUILayout.isChatInputFocused()) {
+                    gameUILayout.unfocusChatInput();
+                } else {
                     log.debug("Giving focus to chat input via Ctrl+Enter.");
-                    gameUILayout.focusChatInput(); // Use facade
+                    gameUILayout.focusChatInput();
                     consumed = true;
                 }
+                return;
             }
             // --- Handle Chat Input Focus (Enter to Submit/Lose Focus) ---
             else if (keyCode == KeyEvent.VK_ENTER) {

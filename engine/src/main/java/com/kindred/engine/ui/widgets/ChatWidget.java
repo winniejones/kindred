@@ -29,7 +29,7 @@ public class ChatWidget extends UIPanel {
         int margin = Const.MARGIN_2;
         int contentWidth = (windowW - Const.SIDEBAR_WIDTH) - margin * 2;
         int inputHeight = Const.CHAT_INPUT_HEIGHT;
-        int areaHeight = (Const.CHAT_HEIGHT - Const.CHAT_INPUT_HEIGHT - Const.MARGIN_2) - inputHeight - margin * 3; // Space for area above input
+        int areaHeight = (Const.CHAT_HEIGHT - Const.CHAT_INPUT_HEIGHT - Const.MARGIN_2); // Space for area above input
 
         // --- Create and Add Chat Display Area ---
         chatArea = new UIChatDisplay(

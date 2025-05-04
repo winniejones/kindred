@@ -28,8 +28,8 @@ public class UIChatDisplay extends UIComponent {
             throw new IllegalArgumentException("UITextArea size must be positive.");
         }
         this.size = size;
-        this.font = new Font("Arial", Font.PLAIN, 11); // Default font
-        this.backgroundColor = Color.WHITE; // Default text color
+        this.font = Const.FONT_SANS_PLAIN_9; // Default font
+        this.backgroundColor = Const.COLOR_STONE_100; // Default text color
         // Background color is handled by the parent UIPanel
     }
 
