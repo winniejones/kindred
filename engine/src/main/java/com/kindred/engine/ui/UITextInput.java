@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 
+import static com.kindred.engine.ui.UIRenderHelper.drawBorder;
+
 /**
  * A UI component for single-line text input.
  * Needs focus management and keyboard event handling from outside.
@@ -262,20 +264,9 @@ public class UITextInput extends UIComponent {
             // 2. Draw Inset Border (Dark on Top/Left, Light on Bottom/Right)
             if (innerBorderSize > 0) {
                 // Ensure border colors are set
-                 if (borderLightColor == null || borderDarkColor == null) deriveBorderColors(this.backgroundColor);
+                if (borderLightColor == null || borderDarkColor == null) deriveBorderColors(this.backgroundColor);
 
-                g.setColor(borderDarkColor); // Dark color for top/left shadow
-                for (int i = 0; i < innerBorderSize; i++) {
-                    g.drawLine(x + i, y + i, x + w - 1 - i, y + i); // Top line
-                    g.drawLine(x + i, y + i + 1, x + i, y + h - 1 - i); // Left line
-                }
-
-                g.setColor(borderLightColor); // Light color for bottom/right highlight
-                for (int i = 0; i < innerBorderSize; i++) {
-                    // Start 1 pixel further in to avoid overlapping corners perfectly
-                    g.drawLine(x + i + 1, y + h - 1 - i, x + w - 1 - i, y + h - 1 - i); // Bottom line
-                    g.drawLine(x + w - 1 - i, y + i + 1, x + w - 1 - i, y + h - 2 - i); // Right line
-                }
+                drawBorder(g, x, y, w, h, innerBorderSize, borderDarkColor, borderLightColor);
             }
 
             // 3. Prepare for Text/Cursor (inside the border)

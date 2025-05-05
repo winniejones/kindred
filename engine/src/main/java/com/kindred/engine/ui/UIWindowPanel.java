@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
 
+import static com.kindred.engine.ui.UIRenderHelper.drawBorder;
 import static com.kindred.engine.ui.UIWindowPanel.Placement.START;
 
 /**
@@ -199,11 +200,11 @@ public class UIWindowPanel extends UIPanel {
         }
 
         // --- Draw Outer Borders ---
-        renderOuterLines(g, x, y, w, h);
+        drawBorder(g, x, y, w, h, outerBorderSize, borderLightColor, borderDarkColor);
 
         // --- Draw Inner Content Frame ---
         if (innerBorderSize > 0 && contentW > 0 && contentH > 0) {
-            renderInnerLines(g, contentX, contentY, contentW, contentH);
+            drawBorder(g, contentX, contentY, contentW, contentH, innerBorderSize, borderDarkColor, borderLightColor);
         }
 
         // --- Render Child Components ---

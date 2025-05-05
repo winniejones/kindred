@@ -4,6 +4,10 @@ import com.kindred.engine.input.InputState;
 import com.kindred.engine.ui.*;
 import lombok.extern.slf4j.Slf4j;
 
+import java.awt.*;
+
+import static com.kindred.engine.ui.UIRenderHelper.drawBorder;
+
 /**
  * A self-contained UI widget for the game chat area.
  * Contains the text display area and the text input field.
@@ -91,9 +95,17 @@ public class ChatWidget extends UIPanel {
     }
 
     // Render method calls super.render which renders children
-    // @Override
-    // public void render(Graphics g) {
-    //     if (!active) return;
-    //     super.render(g); // Draws background and calls render on children
-    // }
+    @Override
+    public void render(Graphics g) {
+        if (!active) return;
+        super.render(g); // Draws background and calls render on children
+        // ─── 1) Outer 3D frame ─────────────────────────────────
+        Vector2i abs = getAbsolutePosition();
+        int px = abs.x, py = abs.y, pw = size.x, ph = size.y;
+        drawBorder(g, px, py, pw, ph, 2, Const.COLOR_STONE_400, Const.COLOR_STONE_700);
+
+        // ─── 2) Draw background and child components ──────────
+        super.render(g);
+    }
+
 }

@@ -9,6 +9,8 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 
+import static com.kindred.engine.ui.UIRenderHelper.drawBorder;
+
 /**
  * A clickable UI button component. Can display text or an image.
  * Triggers an action when clicked.
@@ -24,7 +26,6 @@ public class UIButton extends UIComponent {
     private Color baseColor;
 
     private UIActionListener actionListener;
-
     private UIButtonListener buttonListener;
 
     // State tracking
@@ -32,8 +33,7 @@ public class UIButton extends UIComponent {
     private boolean pressed = false;
     private boolean ignorePressed = false;
 
-    private int arcWidth = 3;
-    private int arcHeight = 3;
+
 
     /**
      * Creates a button with text.
@@ -52,8 +52,7 @@ public class UIButton extends UIComponent {
 
         // Create the label but DON'T add it to the panel here.
         // Position will be relative to the button's top-left (0,0) for rendering calculation.
-        this.label = new UILabel(new Vector2i(0, 0), text)
-                .setActive(true);
+        this.label = new UILabel(new Vector2i(0, 0), text).setActive(true);
         // We will calculate the centered position within the render method
         this.color = textColor;
         this.colorOnHover = hoverColor;
@@ -139,8 +138,6 @@ public class UIButton extends UIComponent {
         return this;
     }
     public UIButton setImage(BufferedImage image) { /* ... (same logic) ... */ return this; }
-    public UIButton setArc(int arcWidth, int arcHeight) { this.arcWidth = Math.max(0, arcWidth); this.arcHeight = Math.max(0, arcHeight); return this; }
-
 
     /** Update method - Handles mouse interaction logic using InputState. */
     @Override
@@ -233,6 +230,8 @@ public class UIButton extends UIComponent {
             Vector2i absolutePos = getAbsolutePosition();
             int x = absolutePos.x;
             int y = absolutePos.y;
+            int w = size.x;
+            int h = size.y;
 
             // 1. Draw Background or Image
             if (image != null) {
@@ -259,6 +258,12 @@ public class UIButton extends UIComponent {
                 // Set color and draw
                 g2d.setColor(this.color);
                 g2d.drawString(label.text, labelX, labelY);
+            }
+
+            if(pressed) {
+                drawBorder(g2d, x, y, w, h, 1, Const.COLOR_STONE_800, Const.COLOR_STONE_400);
+            } else {
+                drawBorder(g2d, x, y, w, h, 1, Const.COLOR_STONE_400, Const.COLOR_STONE_800);
             }
         } finally {
             g2d.dispose(); // <<< Dispose the copied graphics context >>>
