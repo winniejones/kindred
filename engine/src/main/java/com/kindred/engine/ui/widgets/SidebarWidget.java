@@ -36,8 +36,8 @@ public final class SidebarWidget extends UIPanel {
      * @param playerId Player's entity ID (passed to PlayerStatsPanel).
      */
     public SidebarWidget(
-        int windowW, int windowH,
-        EntityManager em, int playerId
+            int windowW, int windowH,
+            EntityManager em, int playerId
     ) {
         // --- Initialize Sidebar Panel itself ---
         super(new Vector2i(windowW - Const.SIDEBAR_WIDTH, 0),
@@ -68,14 +68,20 @@ public final class SidebarWidget extends UIPanel {
         // --- Create Buttons (without final action yet) and Add to Button Bar ---
         int btnY = 0;
         // Create buttons with a placeholder action initially, store references
-        skillsButton = createMenuButton("Skills", new Vector2i(2, btnY), () -> {});
-        optionsButton = createMenuButton("Options", new Vector2i(2   * 2 + Const.MENU_BTN_WIDTH, btnY), () -> {});
+        skillsButton = createMenuButton("Skills", new Vector2i(2, btnY), () -> {
+        });
+        optionsButton = createMenuButton("Options", new Vector2i(2 * 2 + Const.MENU_BTN_WIDTH, btnY), () -> {
+        });
         buttonBarPanel.addComponent(skillsButton);
         buttonBarPanel.addComponent(optionsButton);
         currentY += Const.BAR_HEIGHT + margin;
 
         // --- Create Hidden Skills Panel ---
-        skillsPanel = new UIWindowPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.SKILLS_HEIGHT))
+        skillsPanel = new UIWindowPanel(
+                new Vector2i(margin, currentY),
+                new Vector2i(contentW, Const.SKILLS_HEIGHT),
+                () -> skillsButton.setToggled(false)
+        )
                 .setColor(Const.COLOR_BG_SKILLS)
                 .setActive(false)
                 .setHeaderHeight(18)
@@ -86,7 +92,11 @@ public final class SidebarWidget extends UIPanel {
         addComponent(skillsPanel);
 
         // --- Create Hidden Options Panel ---
-        optionsPanel = new UIWindowPanel(new Vector2i(margin, currentY), new Vector2i(contentW, Const.OPTIONS_HEIGHT))
+        optionsPanel = new UIWindowPanel(
+                new Vector2i(margin, currentY),
+                new Vector2i(contentW, Const.OPTIONS_HEIGHT),
+                () -> optionsButton.setToggled(false)
+        )
                 .setColor(Const.COLOR_BG_OPTIONS)
                 .setActive(false)
                 .setHeaderHeight(14)
@@ -103,6 +113,7 @@ public final class SidebarWidget extends UIPanel {
 
     private UIButton createMenuButton(String text, Vector2i pos, Runnable action) {
         return new UIButton(pos, new Vector2i(Const.MENU_BTN_WIDTH, Const.MENU_BTN_HEIGHT), text, action::run)
+                .setToggleable(true)
                 .setFont(Const.FONT_BTN)
                 .setColor(Const.COLOR_STONE_100)
                 .setHoverColor(Const.COLOR_STONE_500)
@@ -111,13 +122,23 @@ public final class SidebarWidget extends UIPanel {
         // TODO: Set hover/press colors using constants?
     }
 
-    private UIButton createCloseButton(UIPanel panelToClose) {
+    // Helper for close buttons, now takes an additional action for the main button
+    private UIButton createCloseButton(UIPanel panelToClose, Runnable onMainButtonUntoggleAction) {
         Vector2i size = new Vector2i(Const.CLOSE_BTN_SIZE, Const.CLOSE_BTN_SIZE);
-        // Position relative to top-right corner of the panel it's closing
         Vector2i pos = new Vector2i(panelToClose.size.x - size.x - 3, 3);
-        return new UIButton(pos, size, "X", () -> panelToClose.setActive(false))
-                .setColor(Const.COLOR_BG_CLOSE_BTN)
-                .setFont(Const.FONT_CLOSE_BTN);
+        if (panelToClose instanceof UIWindowPanel) { // Adjust Y for header
+            int outerBorderSize = ((UIWindowPanel) panelToClose).getOuterBorderSize();
+            int headerHeight = ((UIWindowPanel) panelToClose).getHeaderHeight();
+            int btnX = panelToClose.size.x - size.x - outerBorderSize - 3; // 3px padding from right border
+            int btnY = outerBorderSize + (headerHeight - Const.CLOSE_BTN_SIZE * 2) / 2; // Center vertically in header area
+            pos = new Vector2i(btnX, btnY);
+        }
+        return new UIButton(pos, size, "X", () -> {
+            panelToClose.setActive(false);
+            if (onMainButtonUntoggleAction != null) {
+                onMainButtonUntoggleAction.run(); // Untoggle the corresponding menu button
+            }
+        }).setColor(Const.COLOR_STONE_900).setFont(Const.FONT_SANS_BOLD_7);
     }
 
     // --- Public API for this Widget ---
@@ -146,6 +167,7 @@ public final class SidebarWidget extends UIPanel {
             skillsButton.setActionListener(action::run);
         }
     }
+
     public void setOptionsButtonAction(Runnable action) {
         if (optionsButton != null && action != null) {
             optionsButton.setActionListener(action::run);

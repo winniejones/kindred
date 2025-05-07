@@ -32,6 +32,8 @@ public class UIButton extends UIComponent {
     private boolean inside = false;
     private boolean pressed = false;
     private boolean ignorePressed = false;
+    private boolean toggled = false;
+    private boolean toggleable = false;
 
 
 
@@ -99,11 +101,23 @@ public class UIButton extends UIComponent {
     @Override public UIButton setPosition(Vector2i position) { super.setPosition(position); return this; }
     @Override public UIButton setPosition(int x, int y) { super.setPosition(x, y); return this; }
 
+    public UIButton setToggled(boolean toggled) {
+        this.toggled = toggled;
+        // Update visual state immediately if not currently being pressed by mouse
+        return this;
+    }
+    public UIButton setToggleable(boolean toggleable) {
+        this.toggleable = toggleable;
+        return this;
+    }
+    public boolean isToggled() { return toggled; }
+
     /** Sets the size of the button using Vector2i (fluent). */
     public UIButton setSize(Vector2i size) {
         if (size != null && size.x > 0 && size.y > 0) { this.size = size; }
         return this;
     }
+
     /** Sets the size of the button using int dimensions (fluent). */
     public UIButton setSize(int width, int height) {
         if (width > 0 && height > 0) {
@@ -187,6 +201,7 @@ public class UIButton extends UIComponent {
                 log.trace("Mouse pressed on button {}", this.label != null ? label.text : "ImageButton");
                 buttonListener.pressed(this);
                 pressed = true;
+                setToggled(!isToggled());
             }
             // Check for Release: Mouse button went up *this frame* while inside
             else if (pressed && leftMouseButtonReleased) {
@@ -260,11 +275,13 @@ public class UIButton extends UIComponent {
                 g2d.drawString(label.text, labelX, labelY);
             }
 
-            if(pressed) {
-                drawBorder(g2d, x, y, w, h, 1, Const.COLOR_STONE_800, Const.COLOR_STONE_400);
-            } else {
-                drawBorder(g2d, x, y, w, h, 1, Const.COLOR_STONE_400, Const.COLOR_STONE_800);
+            Color L1 = Const.COLOR_STONE_300; // Default light border
+            Color L2 = Const.COLOR_STONE_900; // Default dark border
+            if((this.toggleable && this.toggled) || pressed) {
+                L1 = Const.COLOR_STONE_900; // Inset: dark on top/left
+                L2 = Const.COLOR_STONE_300;
             }
+            drawBorder(g2d, x, y, w, h, 1, L1, L2);
         } finally {
             g2d.dispose(); // <<< Dispose the copied graphics context >>>
         }
