@@ -24,7 +24,7 @@ public class UIWindowPanel extends UIPanel {
     private Color titleColor;
     private Placement titlePlacement = START;
     @Getter
-    private int headerHeight = 0;
+    private int headerHeight = 10;
     @Getter
     private int outerBorderSize = 2;
     @Getter
@@ -61,7 +61,7 @@ public class UIWindowPanel extends UIPanel {
             Vector2i btnSize = new Vector2i(Const.CLOSE_BTN_SIZE, Const.CLOSE_BTN_SIZE);
             // Position relative to the panel's top-right corner, inside border, centered in header vertically
             int btnX = this.size.x - btnSize.x - outerBorderSize - 3; // 3px padding from right border
-            int btnY = outerBorderSize + (headerHeight - Const.CLOSE_BTN_SIZE * 2) / 2; // Center vertically in header area
+            int btnY = 3; // Center vertically in header area
             Vector2i btnPos = new Vector2i(btnX, btnY);
 
             // Create the button, action sets this panel's active state to false
@@ -70,7 +70,12 @@ public class UIWindowPanel extends UIPanel {
                 if (onMainButtonUntoggleAction != null) {
                     onMainButtonUntoggleAction.run(); // Untoggle the corresponding menu button
                 }
-            }).setColor(Const.COLOR_STONE_900).setFont(Const.FONT_SANS_BOLD_7);
+            })
+                    .setBaseColor(Const.COLOR_STONE_900)
+                    .setBackgroundColor(Const.COLOR_STONE_900)
+                    .setHoverColor(Const.COLOR_STONE_950)
+                    .setColor(Const.COLOR_STONE_100)
+                    .setFont(Const.FONT_SANS_BOLD_7);
 
             // Add the button as a child component of this panel
             this.addComponent(this.closeButton);

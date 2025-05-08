@@ -6,9 +6,8 @@ import com.kindred.engine.ui.panels.MinimapPanel;
 import com.kindred.engine.ui.panels.PlayerStatsPanel;
 
 import java.awt.*;
-
-import static com.kindred.engine.ui.UIWindowPanel.Placement.END;
-import static com.kindred.engine.ui.UIWindowPanel.Placement.START;
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 /**
  * A self-contained UI widget representing the main game sidebar.
@@ -25,6 +24,12 @@ public final class SidebarWidget extends UIPanel {
 
     private final UIButton skillsButton;
     private final UIButton optionsButton;
+
+    private final int panelsStartY;   // Y just below the button bar
+    private final int margin;         // reuse the sidebar margin
+    private UIPanel lastOpenedPanel;  // null until one is opened
+
+    private final Deque<UIPanel> stack = new ArrayDeque<>();
     // Add inventory panels if needed
 
     /**
@@ -45,7 +50,7 @@ public final class SidebarWidget extends UIPanel {
         setColor(Const.COLOR_BG_SIDEBAR);
 
         // --- Calculate layout values ---
-        int margin = Const.MARGIN_2;
+        this.margin = Const.MARGIN_2;
         int contentW = size.x - margin * 2;
         int currentY = margin;
 
@@ -68,15 +73,17 @@ public final class SidebarWidget extends UIPanel {
         // --- Create Buttons (without final action yet) and Add to Button Bar ---
         int btnY = 0;
         // Create buttons with a placeholder action initially, store references
-        skillsButton = createMenuButton("Skills", new Vector2i(2, btnY), () -> {
+        skillsButton = createMenuButton("Skills", new Vector2i(margin, btnY), () -> {
         });
-        optionsButton = createMenuButton("Options", new Vector2i(2 * 2 + Const.MENU_BTN_WIDTH, btnY), () -> {
+        optionsButton = createMenuButton("Options", new Vector2i(margin * 2 + Const.MENU_BTN_WIDTH, btnY), () -> {
         });
         buttonBarPanel.addComponent(skillsButton);
         buttonBarPanel.addComponent(optionsButton);
         currentY += Const.BAR_HEIGHT + margin;
+        this.panelsStartY = currentY;
 
         // --- Create Hidden Skills Panel ---
+        int headerHeight = 10;
         skillsPanel = new UIWindowPanel(
                 new Vector2i(margin, currentY),
                 new Vector2i(contentW, Const.SKILLS_HEIGHT),
@@ -84,8 +91,8 @@ public final class SidebarWidget extends UIPanel {
         )
                 .setColor(Const.COLOR_BG_SKILLS)
                 .setActive(false)
-                .setHeaderHeight(18)
-                .setHeaderColor(Const.COLOR_STONE_900)
+                .setHeaderHeight(headerHeight)
+                .setHeaderColor(Const.COLOR_STONE_800)
                 .setTitleColor(Const.COLOR_TEXT_LIGHT)
                 .setTitleFont(Const.FONT_SANS_BOLD_8)
                 .setTitle("Skills");
@@ -99,13 +106,20 @@ public final class SidebarWidget extends UIPanel {
         )
                 .setColor(Const.COLOR_BG_OPTIONS)
                 .setActive(false)
-                .setHeaderHeight(14)
-                .setHeaderColor(Const.COLOR_STONE_900)
+                .setHeaderHeight(headerHeight)
+                .setHeaderColor(Const.COLOR_STONE_800)
                 .setTitleColor(Const.COLOR_TEXT_LIGHT)
                 .setTitleFont(Const.FONT_SANS_BOLD_8)
                 .setTitle("Options");
         addComponent(optionsPanel);
 
+        stack.addLast(skillsPanel);
+        stack.addLast(optionsPanel);
+
+        skillsButton.setActionListener(this::toggleSkillsPanel);
+        optionsButton.setActionListener(this::toggleOptionsPanel);
+
+        layoutStack();
         // TODO: Add Inventory Panels below if needed, updating currentY
     }
 
@@ -130,11 +144,12 @@ public final class SidebarWidget extends UIPanel {
             int outerBorderSize = ((UIWindowPanel) panelToClose).getOuterBorderSize();
             int headerHeight = ((UIWindowPanel) panelToClose).getHeaderHeight();
             int btnX = panelToClose.size.x - size.x - outerBorderSize - 3; // 3px padding from right border
-            int btnY = outerBorderSize + (headerHeight - Const.CLOSE_BTN_SIZE * 2) / 2; // Center vertically in header area
+            int btnY = outerBorderSize + (headerHeight - size.y) / 2; // Center vertically in header area
             pos = new Vector2i(btnX, btnY);
         }
         return new UIButton(pos, size, "X", () -> {
             panelToClose.setActive(false);
+            bringToBack(panelToClose);
             if (onMainButtonUntoggleAction != null) {
                 onMainButtonUntoggleAction.run(); // Untoggle the corresponding menu button
             }
@@ -143,18 +158,37 @@ public final class SidebarWidget extends UIPanel {
 
     // --- Public API for this Widget ---
 
+
     /** Toggles the visibility of the Skills panel. */
     public void toggleSkillsPanel() {
-        skillsPanel.setActive(!skillsPanel.active);
-        // Optional: Hide options if skills shown
-        if (skillsPanel.active) optionsPanel.setActive(false);
+        boolean on = !skillsPanel.active;
+        skillsPanel.setActive(on);
+        if (on) bringToBack(skillsPanel);
+        layoutStack();
     }
 
     /** Toggles the visibility of the Options panel. */
     public void toggleOptionsPanel() {
-        optionsPanel.setActive(!optionsPanel.active);
-        // Optional: Hide skills if options shown
-        if (optionsPanel.active) skillsPanel.setActive(false);
+        boolean on = !optionsPanel.active;
+        optionsPanel.setActive(on);
+        if (on) bringToBack(optionsPanel);
+        layoutStack();
+    }
+
+    private void bringToBack(UIPanel p) {
+        stack.remove(p);             // O(1) in ArrayDeque
+        stack.addLast(p);            // newest at the tail
+    }
+
+    /** Lay out everything that is currently active */
+    private void layoutStack() {
+        int y = panelsStartY;
+        for (UIPanel p : stack) {
+            if (p.active) {
+                p.setPosition(margin, y);
+                y += p.size.y + margin;
+            }
+        }
     }
 
     /** Updates the player ID the stats panel should track (if player changes). */
@@ -175,4 +209,12 @@ public final class SidebarWidget extends UIPanel {
     }
 
     // Note: update() and render() are handled by the UIPanel base class
+    @Override
+    public void render(Graphics g) {
+        super.render(g);                         // draws the button bar, minimap, etc.
+
+        for (UIPanel p : stack) {                // our own draw order
+            if (p.active) p.render(g);
+        }
+    }
 }
