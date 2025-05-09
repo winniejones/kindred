@@ -52,8 +52,7 @@ public class CombatSystem implements System {
                     entityManager.hasComponent(attackerId, DeadComponent.class) ||
                     !entityManager.hasComponent(attackerId, AttackActionComponent.class) ||
                     !entityManager.hasComponent(attackerId, PositionComponent.class) ||
-                    !entityManager.hasComponent(attackerId, AttackComponent.class))
-            {
+                    !entityManager.hasComponent(attackerId, AttackComponent.class)) {
                 entityManager.removeComponent(attackerId, AttackActionComponent.class);
                 continue;
             }
@@ -108,9 +107,10 @@ public class CombatSystem implements System {
                     int hitX = targetPos.x + targetCollider.offsetX + targetCollider.hitboxWidth / 2;
                     int hitY = targetPos.y + targetCollider.offsetY + targetCollider.hitboxHeight / 2;
                     int particleCount = 7 + random.nextInt(6);
-                    // <<< Pass hit location to spawn method >>>
-                    spawnHitParticles(hitX, hitY, attackerPos.x, attackerPos.y, particleCount);
 
+                    spawnHitParticles(hitX, hitY, attackerPos.x, attackerPos.y, particleCount, 45);
+                    //right after you confirmed a successful hit
+                    // spawnDirectionalParticles(attackerPos.x, attackerPos.y, hitX,   hitY, 20, 0xFFFF3030);   // 20 red flecks
                     // Ensure target has the component (add it if missing)
                     ParticipantComponent participants = entityManager.getComponent(targetId, ParticipantComponent.class);
                     if (participants == null) {
@@ -150,7 +150,7 @@ public class CombatSystem implements System {
                         entityManager.removeComponent(targetId, TookDamageComponent.class);
                         // entityManager.removeComponent(targetId, ParticipantComponent.class);
                         // Optional: Stop movement if dead
-                        if(entityManager.hasComponent(targetId, VelocityComponent.class)) {
+                        if (entityManager.hasComponent(targetId, VelocityComponent.class)) {
                             VelocityComponent targetVel = entityManager.getComponent(targetId, VelocityComponent.class);
                             if (targetVel != null) {
                                 targetVel.vx = 0;
@@ -161,19 +161,19 @@ public class CombatSystem implements System {
                         // <<< Set INITIAL Corpse Sprite (Stage 0) >>>
                         SpriteComponent spriteComp = entityManager.getComponent(targetId, SpriteComponent.class);
                         if (spriteComp != null) {
-                             // Get the stage 0 sprite (CorpseDecaySystem needs access too - refactor needed?)
-                             // For now, assume CorpseDecaySystem loads them and maybe CombatSystem can access them?
-                             // Simpler: Just leave the sprite as is for now, CorpseDecaySystem will set stage 0 on its first run.
-                             // OR: Load stage 0 sprite here explicitly. Let's do that for clarity.
-                             BufferedImage corpseSprite = getInitialCorpseSprite(targetId); // Get stage 0 sprite & Check if not placeholder
-                             if (corpseSprite != null && corpseSprite.getWidth() > 1) {
-                                 spriteComp.sprite = corpseSprite;
-                                 log.debug("Set initial corpse sprite for entity {}", targetId);
-                             } else {
-                                 log.warn("Could not get initial corpse sprite for entity {}, might remain as last living sprite or placeholder.", targetId);
-                                 // Optionally set to a generic placeholder if getInitialCorpseSprite failed badly
-                                 // spriteComp.sprite = AssetLoader.createPlaceholderImage(32,32);
-                             }
+                            // Get the stage 0 sprite (CorpseDecaySystem needs access too - refactor needed?)
+                            // For now, assume CorpseDecaySystem loads them and maybe CombatSystem can access them?
+                            // Simpler: Just leave the sprite as is for now, CorpseDecaySystem will set stage 0 on its first run.
+                            // OR: Load stage 0 sprite here explicitly. Let's do that for clarity.
+                            BufferedImage corpseSprite = getInitialCorpseSprite(targetId); // Get stage 0 sprite & Check if not placeholder
+                            if (corpseSprite != null && corpseSprite.getWidth() > 1) {
+                                spriteComp.sprite = corpseSprite;
+                                log.debug("Set initial corpse sprite for entity {}", targetId);
+                            } else {
+                                log.warn("Could not get initial corpse sprite for entity {}, might remain as last living sprite or placeholder.", targetId);
+                                // Optionally set to a generic placeholder if getInitialCorpseSprite failed badly
+                                // spriteComp.sprite = AssetLoader.createPlaceholderImage(32,32);
+                            }
                         }
                         // <<< Add Lifetime Component for Corpse Removal >>>
                         entityManager.addComponent(targetId, new LifetimeComponent(CORPSE_LIFETIME));
@@ -187,84 +187,72 @@ public class CombatSystem implements System {
         } // End attacker loop
     } // End update()
 
-    private void spawnHitParticles(int hitX, int hitY, int attackerX, int attackerY, int count) {
-        log.trace("Spawning {} particles at ({}, {}) away from ({}, {})", count, hitX, hitY, attackerX, attackerY);
-        int particleColor = 0xFFFF2222; // Reddish
-        float lifetime = 3.3f + random.nextFloat() * 0.4f; // Lifetime 0.3 - 0.7 seconds
-        // float maxInitialSpeed = 80.0f; // Max initial speed in pixels/sec (Used for 'splash' version)
-        // float initialZ = 2.0f + random.nextFloat() * 2.0f; // Start slightly above ground (Matches old zz = random.nextFloat()+2.0)
-        // float maxInitialVZ = 120.0f; // Max initial upward velocity pixels/sec (Used for 'splash' version)
+    private void spawnHitParticles(
+            int hitX, int hitY,
+            int attackerX, int attackerY,
+            int count,
+            float spreadDegrees) {
+        float spread = (float) Math.toRadians(spreadDegrees);
+        float sigma = (float) Math.toRadians(spreadDegrees);      // 95 % of particles inside ±20 °
+        float angleOffset = (float) (random.nextGaussian() * sigma);
 
-        float minSpeed = 40.0f; // Min initial speed pixels/sec
-        float maxSpeed = 100.0f; // Max initial speed pixels/sec
-        float initialZ = 2.0f + random.nextFloat() * 2.0f;
-        float maxInitialVZ = 120.0f; // Max initial upward velocity pixels/sec
-        float spreadAngle = (float)Math.PI / 2.0f; // Spread angle (e.g., 90 degrees total)
+        int particleColor = 0xFFFF2222;                 // reddish
+        float lifetime = 0.3f + random.nextFloat() * 0.4f;
 
-        // --- Calculate base direction away from attacker ---
-        float dirX = hitX - attackerX;
-        float dirY = hitY - attackerY;
-        float len = (float) Math.sqrt(dirX * dirX + dirY * dirY);
+        float minPxPerTick = 0.5f;  //  ≈30 px / s
+        float maxPxPerTick = 2.0f;  // ≈120 px / s
 
-        // Handle case where attacker and target are at the same spot
+        // -------- base direction away from attacker --------
+        float dx = hitX - attackerX;
+        float dy = hitY - attackerY;
+        float len = (float) Math.hypot(dx, dy);
         if (len == 0) {
-            dirX = 1.0f; // Default to moving right
-            dirY = 0.0f;
-            len = 1.0f;
-        }
-        // Normalize base direction
-        float baseNormX = dirX / len;
-        float baseNormY = dirY / len;
+            dx = 1;
+            dy = 0;
+            len = 1;
+        }      // attacker standing on target
+        float baseX = dx / len;
+        float baseY = dy / len;
 
         for (int i = 0; i < count; i++) {
-            int particleEntity = entityManager.createEntity();
-            int particleSize = 1 + random.nextInt(3); // Size 1, 2 or 3
+            int e = entityManager.createEntity();
 
-            entityManager.addComponent(particleEntity, new PositionComponent(hitX + random.nextInt(5)-2, hitY + random.nextInt(5)-2)); // Position near hit
+            // position ✱slightly✱ jittered around the hit point
+            entityManager.addComponent(
+                    e, new PositionComponent(hitX + random.nextInt(5) - 2,
+                            hitY + random.nextInt(5) - 2));
 
-            // --- Initial Velocity ---
-            // Option 1: Current "Splash" (Random outward direction/speed + upward pop)
-            // double angle = random.nextDouble() * 2.0 * Math.PI;
-            // float speed = random.nextFloat() * maxInitialSpeed;
-            // int vx = (int) (Math.cos(angle) * speed);
-            // int vy = (int) (Math.sin(angle) * speed);
-            // float vz = random.nextFloat() * maxInitialVZ; // Initial upward velocity
+            // ----- pick a direction inside the cone -----
+            float a = (random.nextFloat() - .5f) * angleOffset;
+            float cos = (float) Math.cos(a);
+            float sin = (float) Math.sin(a);
+            float dirX = baseX * cos - baseY * sin;
+            float dirY = baseX * sin + baseY * cos;
 
-            // Option 2: Closer to Old Code (Gaussian XY, No initial VZ)
-            // double initialSpeedFactor = 3.0; // Adjust multiplier for Gaussian result
-            // int vx = (int)(random.nextGaussian() * initialSpeedFactor);
-            // int vy = (int)(random.nextGaussian() * initialSpeedFactor);
-            // float vz = 0; // Old code didn't have initial Z velocity
+            // ----- speed is *per-tick* -----
+            float speed = minPxPerTick +
+                    random.nextFloat() * (maxPxPerTick - minPxPerTick);
 
-            float angleOffset = (random.nextFloat() - 0.5f) * spreadAngle; // Random angle within +/- spread/2
-            float cosA = (float) Math.cos(angleOffset);
-            float sinA = (float) Math.sin(angleOffset);
-            // Rotate base direction vector
-            float particleDirX = baseNormX * cosA - baseNormY * sinA;
-            float particleDirY = baseNormX * sinA + baseNormY * cosA;
-            // (No need to re-normalize if just rotating unit vector)
+            int vx = Math.round(dirX * speed);
+            int vy = Math.round(dirY * speed);
+            // guarantee at least 1 px so the particle moves
+            if (vx == 0 && vy == 0) {
+                if (Math.abs(dirX) > Math.abs(dirY)) vx = dirX > 0 ? 1 : -1;
+                else vy = dirY > 0 ? 1 : -1;
+            }
 
-            // 2. Assign random speed
-            double speed = 4.0;
+            entityManager.addComponent(e, new VelocityComponent(vx, vy));
 
-            // 3. Calculate final vx, vy
-            int vx = (int) (particleDirX * speed);
-            int vy = (int) (particleDirY * speed);
+            // visuals & lifetime
+            int size = 1 + random.nextInt(3);
+            entityManager.addComponent(e, new ParticleComponent(particleColor, size));
+            entityManager.addComponent(e, new LifetimeComponent(lifetime));
 
-            // 4. Assign random upward vz
-            float vz = 0;
-
-            entityManager.addComponent(particleEntity, new VelocityComponent(vx, vy));
-            // ----------------------
-
-            entityManager.addComponent(particleEntity, new ParticleComponent(particleColor, particleSize)); // Visuals
-            entityManager.addComponent(particleEntity, new LifetimeComponent(lifetime)); // Lifetime
-
-            // Add ParticlePhysicsComponent, setting initial Z and VZ from above
-            ParticlePhysicsComponent physicsComp = new ParticlePhysicsComponent();
-            physicsComp.z = initialZ;
-            physicsComp.vz = vz; // Use vz from Option 1 or Option 2 above
-            entityManager.addComponent(particleEntity, physicsComp);
+            // simple Z-physics (optional small upward pop)
+            ParticlePhysicsComponent phys = new ParticlePhysicsComponent();
+            phys.z = 2f + random.nextFloat() * 2f;
+            phys.vz = 60f;           // 1 px per tick upward
+            entityManager.addComponent(e, phys);
         }
     }
 
