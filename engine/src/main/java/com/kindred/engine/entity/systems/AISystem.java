@@ -3,19 +3,27 @@ package com.kindred.engine.entity.systems;
 import com.kindred.engine.entity.components.*;
 import com.kindred.engine.entity.core.EntityManager;
 import com.kindred.engine.entity.core.System;
+import com.kindred.engine.resource.AnimationDataRegistry;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.Map;
 
 @Slf4j
 public class AISystem implements System {
     private final EntityManager entityManager;
-    private int playerEntityId = -1; // Cache player ID for efficiency
-    private PositionComponent playerPosCache = null; // Cache player position
+    private int playerEntityId = -1;
+    private PositionComponent playerPosCache = null;
+    private final AnimationDataRegistry animationRegistry;
 
-    public AISystem(EntityManager entityManager) {
+    public AISystem(EntityManager entityManager, AnimationDataRegistry animationRegistry) {
         if (entityManager == null) {
             throw new IllegalArgumentException("EntityManager cannot be null.");
         }
         this.entityManager = entityManager;
+        this.animationRegistry = animationRegistry;
         log.info("AISystem initialized.");
     }
 
@@ -30,16 +38,12 @@ public class AISystem implements System {
                 playerPosCache = entityManager.getComponent(playerEntityId, PositionComponent.class);
                 log.debug("AISystem found player entity: {}", playerEntityId);
             } else {
-                playerEntityId = -1; // Ensure it's reset if player disappears
+                playerEntityId = -1;
                 playerPosCache = null;
-                // log.trace("AISystem: Player not found this cycle.");
-                // No player, AI can only wander/idle
             }
         } else {
-             // If we have a valid ID, just update the position cache
-             // Check if player still has position component (might have died but not removed?)
              playerPosCache = entityManager.getComponent(playerEntityId, PositionComponent.class);
-             if (playerPosCache == null) playerEntityId = -1; // Player lost position? Reset.
+             if (playerPosCache == null) playerEntityId = -1;
         }
         // --- End Find Player ---
 
@@ -48,26 +52,24 @@ public class AISystem implements System {
         for (int entity : entityManager.getEntitiesWith(
                 PositionComponent.class,
                 VelocityComponent.class,
-                WanderAIComponent.class)) // Process all entities with basic wander/attack AI
+                WanderAIComponent.class,
+                AnimationComponent.class))
         {
-            // Skip player if player somehow has WanderAIComponent
             if (entity == playerEntityId) continue;
             if(entityManager.hasComponent(entity, DeadComponent.class)) continue;
 
             PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
             VelocityComponent vel = entityManager.getComponent(entity, VelocityComponent.class);
             WanderAIComponent ai = entityManager.getComponent(entity, WanderAIComponent.class);
-            AttackComponent attackComp = entityManager.getComponent(entity, AttackComponent.class); // Might be null if AI can't attack
+            AttackComponent attackComp = entityManager.getComponent(entity, AttackComponent.class);
+            AnimationComponent animComp = entityManager.getComponent(entity, AnimationComponent.class);
 
-            if (pos == null || vel == null || ai == null) continue; // Skip if missing core components
+            if (pos == null || vel == null || ai == null || animComp == null) continue;
 
-            // <<< Check if this entity is an NPC >>>
             boolean isNpc = entityManager.hasComponent(entity, NPCComponent.class);
-
             boolean canSeePlayer = false;
             float distanceSqToPlayer = Float.MAX_VALUE;
 
-            // Check distance to player if player exists
             if (playerEntityId != -1 && playerPosCache != null) {
                  float dx = playerPosCache.x - pos.x;
                  float dy = playerPosCache.y - pos.y;
@@ -77,7 +79,17 @@ public class AISystem implements System {
                  }
             }
 
-            // --- State Transition Logic ---
+            // --- Stop movement/wandering if starting an attack ---
+            if (animComp.isAttacking) {
+                vel.vx = 0;
+                vel.vy = 0;
+                // AI continues with its attack animation, CombatSystem handles hit detection
+                // AnimationSystem handles progressing the attack animation
+                continue; // Skip other AI logic while attacking
+            }
+
+
+            // State Transition Logic
             if (canSeePlayer && !isNpc && ai.currentState != WanderAIComponent.AIState.ATTACKING) {
                 // Player entered aggro range, and it's not an NPC -> Attack!
                 log.debug("Entity {} detected player, switching to ATTACKING", entity);
@@ -111,7 +123,16 @@ public class AISystem implements System {
                     break;
 
                 case WANDERING:
-                    // Move towards wander target (ai.targetX, ai.targetY)
+                    // ... (existing wander logic to set vel.vx, vel.vy) ...
+                    // Update direction for animation
+                    if (vel.vx != 0 || vel.vy != 0) {
+                        int newDirection = animComp.direction;
+                        if (vel.vy < 0) newDirection = AnimationComponent.UP;
+                        else if (vel.vy > 0) newDirection = AnimationComponent.DOWN;
+                        else if (vel.vx < 0) newDirection = AnimationComponent.LEFT;
+                        else if (vel.vx > 0) newDirection = AnimationComponent.RIGHT;
+                        animComp.setDirection(newDirection);
+                    }
                     float wanderDx = ai.targetX - pos.x;
                     float wanderDy = ai.targetY - pos.y;
                     double wanderDist = Math.sqrt(wanderDx * wanderDx + wanderDy * wanderDy);
@@ -119,7 +140,7 @@ public class AISystem implements System {
                     if (wanderDist < ai.moveSpeed * deltaTime * 1.5f || wanderDist == 0) {
                         // Arrived at wander target
                         vel.vx = 0; vel.vy = 0;
-                        pos.x = ai.targetX; pos.y = ai.targetY; // Snap
+                        pos.x = ai.targetX; pos.y = ai.targetY;
                         ai.resetIdleTimer();
                         ai.currentState = WanderAIComponent.AIState.IDLE;
                         log.trace("Entity {} reached wander target, now idling.", entity);
@@ -142,13 +163,17 @@ public class AISystem implements System {
                          break; // Exit switch for this entity
                     }
 
-                    // Target is the player's current position
-                    ai.targetX = playerPosCache.x; // Update target continuously
+                    ai.targetX = playerPosCache.x;
                     ai.targetY = playerPosCache.y;
 
                     float attackDx = ai.targetX - pos.x;
                     float attackDy = ai.targetY - pos.y;
-                    // distanceSqToPlayer already calculated above
+                    // Simplified direction update for AI (prioritize horizontal then vertical or vice-versa)
+                    if (Math.abs(attackDx) > Math.abs(attackDy)) {
+                        animComp.setDirection(attackDx > 0 ? AnimationComponent.RIGHT : AnimationComponent.LEFT);
+                    } else {
+                        animComp.setDirection(attackDy > 0 ? AnimationComponent.DOWN : AnimationComponent.UP);
+                    }
 
                     // Check if entity can attack and if player is in range
                     if (attackComp != null && distanceSqToPlayer <= (attackComp.range * attackComp.range)) {
@@ -157,19 +182,44 @@ public class AISystem implements System {
                         vel.vy = 0;
 
                         // Check attack cooldown
-                        if (attackComp.currentCooldown <= 0) {
-                            // Cooldown ready - initiate attack!
-                            log.debug("Entity {} attacks player {}!", entity, playerEntityId);
-                            entityManager.addComponent(entity, new AttackActionComponent()); // Signal CombatSystem
-                            attackComp.currentCooldown = attackComp.attackCooldown; // Reset cooldown
-                        } else {
-                            // Still cooling down, wait
-                            // log.trace("Entity {} attack on cooldown ({}s left)", entity, attackComp.currentCooldown);
+                        if (!animComp.isAttacking && attackComp.currentCooldown <= 0) {
+                            animComp.isAttacking = true; // Set character state
+                            String weaponType = "GENERIC_SLASH";
+
+                            BufferedImage[][] allAttackEffectFrames = animationRegistry.getAttackAnimationFrames(weaponType, animComp.direction);
+                            Map<Integer, List<Rectangle>> hitboxesForEffect = animationRegistry.getAttackHitboxes(weaponType, animComp.direction);
+                            float frameDuration = animationRegistry.getAttackFrameDuration(weaponType);
+                            int totalFramesInSequence = animationRegistry.getNumberOfAttackFrames(weaponType);
+
+                            if (allAttackEffectFrames != null && animComp.direction < allAttackEffectFrames.length && allAttackEffectFrames[animComp.direction] != null) {
+                                AttackVisualEffectComponent effectComp = new AttackVisualEffectComponent(
+                                    allAttackEffectFrames[animComp.direction],
+                                    hitboxesForEffect,
+                                    frameDuration,
+                                    totalFramesInSequence,
+                                    animComp.direction
+                                );
+                                entityManager.addComponent(entity, effectComp);
+                                entityManager.addComponent(entity, new AttackActionComponent());
+
+                                AttackingStateComponent attackingState = entityManager.getComponent(entity, AttackingStateComponent.class);
+                                if (attackingState == null) {
+                                    attackingState = new AttackingStateComponent();
+                                    entityManager.addComponent(entity, attackingState);
+                                }
+                                attackingState.clearHitTargets();
+
+                                attackComp.currentCooldown = attackComp.attackCooldown;
+                                log.debug("AI Entity {} started attack. Added AttackVisualEffectComponent.", entity);
+                            } else {
+                                log.warn("AI Entity {}: Could not retrieve attack EFFECT frames for weapon {} dir {}. Attack not initiated.", entity, weaponType, animComp.direction);
+                                animComp.isAttacking = false; // Revert state
+                            }
                         }
-                    } else {
-                        // Out of attack range, but still aggroed - move towards player
-                        double attackDist = Math.sqrt(distanceSqToPlayer); // Need actual distance for normalization
-                        if (attackDist > 0) { // Avoid division by zero if somehow distance is 0
+                    } else if (!animComp.isAttacking) { // Only move if not already in an attack animation
+                        // Move towards player
+                        double attackDist = Math.sqrt(distanceSqToPlayer);
+                        if (attackDist > 0) {
                              vel.vx = (int) Math.round((attackDx / attackDist) * ai.moveSpeed);
                              vel.vy = (int) Math.round((attackDy / attackDist) * ai.moveSpeed);
                              if (vel.vx == 0 && attackDx != 0) vel.vx = (attackDx > 0) ? 1 : -1;
@@ -180,7 +230,7 @@ public class AISystem implements System {
                         }
                     }
                     break;
-            } // End switch state
-        } // End entity loop
-    } // End update()
+            }
+        }
+    }
 }

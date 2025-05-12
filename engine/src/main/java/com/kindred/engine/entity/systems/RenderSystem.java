@@ -6,6 +6,7 @@ import com.kindred.engine.entity.core.System;
 import com.kindred.engine.render.Screen;
 
 // Import SLF4J/Lombok if using logging
+import com.kindred.engine.ui.Const;
 import lombok.extern.slf4j.Slf4j;
 
 import java.awt.*;
@@ -18,9 +19,8 @@ public class RenderSystem implements System {
 
     private final EntityManager entityManager;
     private final Screen screen;
-
-    // List to hold entities for sorting - reused to avoid reallocation
     private final List<Integer> entitiesToRender = new ArrayList<>();
+    private final Comparator<Integer> renderOrderComparator;
 
     // --- Configuration for Nameplates/Health Bars ---
     private final int healthBarWidth = 16;
@@ -30,12 +30,9 @@ public class RenderSystem implements System {
     private final Font nameFont = new Font("Arial", Font.BOLD, 8);
     private final Color healthBarBgColor = Color.DARK_GRAY;
     private final Color healthBarFgColor = Color.GREEN;
-    private final Color healthBarLowColor = Color.RED; // Color when health is low
-    private final float healthLowThreshold = 0.3f; // Percentage below which health bar turns red
-    // ------------------------------------------------
+    private final Color healthBarLowColor = Color.RED;
+    private final float healthLowThreshold = 0.3f;
 
-    // --- Custom Comparator for Rendering Order ---
-    private final Comparator<Integer> renderOrderComparator;
 
     public RenderSystem(EntityManager entityManager, Screen screen) {
         // 1. Assign final fields FIRST
@@ -46,112 +43,141 @@ public class RenderSystem implements System {
         log.info("RenderSystem initialized.");
     }
 
+    private int getYBottom(PositionComponent pos, int entityId) {
+        SpriteComponent sc = entityManager.getComponent(entityId, SpriteComponent.class);
+        if (sc != null && sc.sprite != null) {
+            return pos.y + sc.sprite.getHeight();
+        }
+        // Fallback if no sprite, or use collider bottom
+        ColliderComponent col = entityManager.getComponent(entityId, ColliderComponent.class);
+        if (col != null) {
+            return pos.y + col.offsetY + col.hitboxHeight;
+        }
+        return pos.y + 32; // Assuming a default height for sorting if no sprite info
+    }
+
+
     @Override
     public void update(float deltaTime) {
-        render();
+        // RenderSystem's main job is in render(), not typically update(deltaTime)
+        // unless it has its own animations or effects to manage over time.
     }
 
     public void render() {
-        // --- Render Standard Sprites ---
-        renderSprites();
+        entitiesToRender.clear();
+        // Get entities with base sprite and position for initial render list
+        Set<Integer> baseRenderables = entityManager.getEntitiesWith(PositionComponent.class, SpriteComponent.class);
+        entitiesToRender.addAll(baseRenderables);
 
-        // --- Render Particles ---
-        renderPractice();
-        // --- End Render Particles ---
-
-    } // End render()
-
-    private void renderPractice() {
-        for (int entity : entityManager.getEntitiesWith(PositionComponent.class, ParticleComponent.class)) {
-            // Dead particles are removed by LifetimeSystem, no need to check DeadComponent
-            PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
-            ParticleComponent particle = entityManager.getComponent(entity, ParticleComponent.class);
-            ParticlePhysicsComponent physics = entityManager.getComponent(entity, ParticlePhysicsComponent.class); // Get physics component
-
-            if (pos == null || particle == null || physics == null) continue;
-
-            // Calculate screen Y position by subtracting Z height
-            int screenY = pos.y - (int) physics.z; // Adjust offset as needed
-            int screenX = pos.x - particle.size / 2; // Center particle
-
-            // Draw particle as a simple colored rectangle using fillRect
-            screen.fillRect(screenX, screenY, particle.size, particle.size, particle.color, true); // true = use offset
-        }
-    }
-
-    private void renderSprites() {
-        // --- 1. Gather Renderable Entities ---
-        prepareEntityList();
-
-        // --- 2. Sort Entities using Custom Comparator ---
+        // Sort entities by Y position for painter's algorithm
+        // (Dead entities are already handled by the comparator to be drawn first within their Y-sort)
         entitiesToRender.sort(renderOrderComparator);
 
-        // --- 3. Render Sorted Entities (Sprites + Nameplates/Health Bars) ---
-        for (int entity : entitiesToRender) {
-            if (!entityManager.isEntityActive(entity)) continue;
+        for (int entityId : entitiesToRender) {
+            if (!entityManager.isEntityActive(entityId)) continue;
 
-            PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
-            SpriteComponent spriteComp = entityManager.getComponent(entity, SpriteComponent.class);
+            PositionComponent pos = entityManager.getComponent(entityId, PositionComponent.class);
+            SpriteComponent spriteComp = entityManager.getComponent(entityId, SpriteComponent.class);
+
             if (pos == null || spriteComp == null || spriteComp.sprite == null) continue;
 
-            BufferedImage currentSprite = spriteComp.sprite;
-            boolean isDead = entityManager.hasComponent(entity, DeadComponent.class);
-            boolean applyFlash = false;
+            // 1. Draw the entity's base sprite (character, corpse, etc.)
+            // The sprite in spriteComp is managed by AnimationSystem (for walk/idle)
+            // or CorpseDecaySystem (for dead entities).
+            screen.drawSpriteWithOffset(pos.x, pos.y, spriteComp.sprite); // Assuming drawSpriteWithOffset handles camera
 
-            // Hit Flash Check (Only apply if NOT dead)
-            if (!isDead && entityManager.hasComponent(entity, TookDamageComponent.class)) {
-                TookDamageComponent flash = entityManager.getComponent(entity, TookDamageComponent.class);
-                int flickerSegments = (int) (flash.effectTimer / 0.05f);
-                if (flickerSegments % 2 == 0) {
-                    applyFlash = true;
+            // +++ NEW: Render Attack Visual Effect on top +++
+            if (entityManager.hasComponent(entityId, AttackVisualEffectComponent.class)) {
+                AttackVisualEffectComponent effectComp = entityManager.getComponent(entityId, AttackVisualEffectComponent.class);
+                if (effectComp != null) {
+                    BufferedImage effectFrame = effectComp.getCurrentVisualFrame();
+                    if (effectFrame != null) {
+                        int attackerBaseX = pos.x;
+                        int attackerBaseY = pos.y;
+
+                        int attackerWidth = 32;
+                        int attackerHeight = 32;
+                        if (spriteComp.sprite != null) { // Use actual sprite dimensions if available
+                            attackerWidth = spriteComp.sprite.getWidth();
+                            attackerHeight = spriteComp.sprite.getHeight();
+                        }
+
+                        int effectWidth = effectFrame.getWidth();
+                        int effectHeight = effectFrame.getHeight();
+
+                        // Desired offset factor (e.g., 0.35 means 35% of attacker's dimension "in front")
+                        // This factor determines how much "in front" the effect's *origin* is placed.
+                        // A smaller value (e.g., 0.1f to 0.25f) might be better if the effect sprite itself has empty space.
+                        float offsetFactor = 0.05f; // Tunable: 25% to 50% (0.25f to 0.5f)
+
+                        int finalEffectX = attackerBaseX;
+                        int finalEffectY = attackerBaseY;
+
+                        switch (effectComp.direction) {
+                            case AnimationComponent.UP:
+                                finalEffectX = attackerBaseX + (attackerWidth / 2) - (effectWidth / 2);
+                                // Position effect's origin (top-left) such that it appears in front.
+                                // If effect sprite's visual starts at its top, this moves it up.
+                                finalEffectY = attackerBaseY - (int)(attackerHeight * offsetFactor) - effectHeight / 2 ; // Adjusted to better center and push
+                                break;
+                            case AnimationComponent.DOWN:
+                                finalEffectX = attackerBaseX + (attackerWidth / 2) - (effectWidth / 2);
+                                // Position effect's origin below the attacker
+                                finalEffectY = attackerBaseY + (int)(attackerHeight * offsetFactor) + attackerHeight / 2; // Adjusted
+                                break;
+                            case AnimationComponent.LEFT:
+                                finalEffectY = attackerBaseY + (attackerHeight / 2) - (effectHeight / 2);
+                                // Position effect's origin to the left of the attacker
+                                finalEffectX = attackerBaseX - (int)(attackerWidth * offsetFactor) - effectWidth / 2; // Adjusted
+                                break;
+                            case AnimationComponent.RIGHT:
+                                finalEffectY = attackerBaseY + (attackerHeight / 2) - (effectHeight / 2);
+                                // Position effect's origin to the right of the attacker
+                                finalEffectX = attackerBaseX + (int)(attackerWidth * offsetFactor) + attackerWidth / 2; // Adjusted
+                                break;
+                        }
+                        screen.drawSpriteWithOffset(finalEffectX, finalEffectY, effectFrame);
+                    }
                 }
             }
 
-            if (!applyFlash) {
-                // Draw standard sprite at its base X, Y position
-                screen.drawSpriteWithAlpha(pos.x, pos.y, currentSprite);
-            }
+            // Render Nameplate and Health Bar (your existing logic)
+            if (!entityManager.hasComponent(entityId, DeadComponent.class)) {
+                HealthComponent health = entityManager.getComponent(entityId, HealthComponent.class);
+                NameComponent nameComp = entityManager.getComponent(entityId, NameComponent.class);
 
-            // <<< Render Nameplate and Health Bar for Living Entities >>>
-            if (!isDead) {
-                HealthComponent health = entityManager.getComponent(entity, HealthComponent.class);
-                boolean isPlayer = entityManager.hasComponent(entity, PlayerComponent.class);
-                boolean isEnemy = entityManager.hasComponent(entity, EnemyComponent.class);
-                NameComponent nameComp = entityManager.getComponent(entity, NameComponent.class);
-                // boolean isNPC = entityManager.hasComponent(entity, NPCComponent.class); // If NPCs need names/bars
+                int centerX = pos.x + ((spriteComp.sprite != null) ? spriteComp.sprite.getWidth() / 2 : 16); // Center based on sprite
 
-                // --- Calculate Position ---
-                // Center above the entity's origin (pos.x)
-                // You might want to center based on sprite width: centerX = pos.x + spriteComp.sprite.getWidth() / 2;
-                int centerX = pos.x; // Simple centering on origin for now
-                int nameScreenX = centerX - screen.xOffset; // Apply camera offset
-                int nameScreenY = pos.y + nameYOffset - screen.yOffset;
-                String entityName = (nameComp != null) ? nameComp.name : "Entity " + entity;
-                int nameLength = entityName.length() * 2;
-                drawEntityName(nameScreenX + nameLength, nameScreenY, entityName, health);
+                if (nameComp != null) {
+                    int nameScreenX = centerX - screen.xOffset;
+                    int nameScreenY = pos.y + nameYOffset - screen.yOffset;
+                    Color nameColor = Color.WHITE; // Default
+                    if(entityManager.hasComponent(entityId, PlayerComponent.class)) nameColor = Const.COLOR_TEXT_PLAYER_NAME;
+                    else if(entityManager.hasComponent(entityId, EnemyComponent.class)) nameColor = Const.COLOR_TEXT_ENEMY_NAME;
 
-                // Only draw for Players and Enemies (adjust as needed)
-                if ((isPlayer || isEnemy) && health != null) {
-                    int barScreenX = centerX - healthBarWidth / 2 - screen.xOffset; // Center bar horizontally
+                    screen.drawText(nameScreenX, nameScreenY, nameComp.name, nameFont, nameColor, true);
+                }
+
+                if (health != null && (entityManager.hasComponent(entityId, PlayerComponent.class) || entityManager.hasComponent(entityId, EnemyComponent.class))) {
+                    int barScreenX = centerX - healthBarWidth / 2 - screen.xOffset;
                     int barScreenY = pos.y + healthBarYOffset - screen.yOffset;
-                    // --- Draw Name ---
-
-                    // --- Draw Health Bar ---
-                    drawHealthBar(barScreenX + healthBarWidth, barScreenY, healthBarWidth, healthBarHeight, health.getHealthPercentage());
+                    drawHealthBar(barScreenX, barScreenY, healthBarWidth, healthBarHeight, health.getHealthPercentage());
                 }
             }
-            // <<< End Nameplate / Health Bar Rendering >>>
+        } // End entity loop
 
-        } // End sorted entity loop
+        // Render Particles (if they are separate and drawn last)
+        // Your existing particle rendering logic can go here if it's not part of the main entity loop.
+        // For example:
+        for (int particleEntity : entityManager.getEntitiesWith(PositionComponent.class, ParticleComponent.class)) {
+            PositionComponent particlePos = entityManager.getComponent(particleEntity, PositionComponent.class);
+            ParticleComponent particle = entityManager.getComponent(particleEntity, ParticleComponent.class);
+            ParticlePhysicsComponent physics = entityManager.getComponent(particleEntity, ParticlePhysicsComponent.class);
 
-        // --- Render Particles (Separately - Drawn On Top) ---
-        for (int entity : entityManager.getEntitiesWith(PositionComponent.class, ParticleComponent.class)) {
-            PositionComponent pos = entityManager.getComponent(entity, PositionComponent.class);
-            ParticleComponent particle = entityManager.getComponent(entity, ParticleComponent.class);
-            ParticlePhysicsComponent physics = entityManager.getComponent(entity, ParticlePhysicsComponent.class);
-            if (pos == null || particle == null || physics == null) continue;
-            int screenY = pos.y - (int) physics.z;
-            int screenX = pos.x - particle.size / 2;
+            if (particlePos == null || particle == null || physics == null) continue;
+
+            int screenY = particlePos.y - (int) physics.z;
+            int screenX = particlePos.x - particle.size / 2;
             screen.fillRect(screenX, screenY, particle.size, particle.size, particle.color, true);
         }
         // --- End Render Particles ---
@@ -183,26 +209,6 @@ public class RenderSystem implements System {
             return Integer.compare(yA, yB);
         };
     }
-
-    // Helper to get the bottom Y coordinate for sorting
-    private int getYBottom(PositionComponent pos, int entityId) {
-        int height = 32; // Default height
-        // Try getting height from sprite first
-        SpriteComponent sc = entityManager.getComponent(entityId, SpriteComponent.class);
-        if (sc != null && sc.sprite != null) {
-            height = sc.sprite.getHeight();
-        } else {
-            // Fallback to collider height if no sprite?
-            ColliderComponent col = entityManager.getComponent(entityId, ColliderComponent.class);
-            if (col != null) {
-                // Use collider bottom edge relative to position origin
-                return pos.y + col.offsetY + col.hitboxHeight;
-            }
-        }
-        // Default sort position if using only pos.y + sprite height
-        return pos.y + height;
-    }
-    // --- End Custom Comparator ---
 
     private void prepareEntityList() {
         entitiesToRender.clear();

@@ -201,7 +201,7 @@ public class Screen {
 
                 // --- Transparency Check ---
                 // Check if the alpha byte is 0 (fully transparent)
-                if ((col >>> 24) != 0x00) {
+                if (col != ALPHA_COL) {
                     // Alternatively, use a color key: if (col != COLOR_KEY_MAGENTA) {
                     pixels[x + screenRowOffset] = col; // Draw non-transparent pixel
                 }

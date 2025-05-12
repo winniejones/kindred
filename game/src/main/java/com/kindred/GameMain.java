@@ -9,6 +9,7 @@ import com.kindred.engine.level.Level;
 import com.kindred.engine.level.MapLoader;
 import com.kindred.engine.level.SpawnPoint;
 import com.kindred.engine.render.Screen;
+import com.kindred.engine.resource.AnimationDataRegistry;
 import com.kindred.engine.resource.AssetLoader;
 import com.kindred.engine.ui.UIManager;
 import com.kindred.engine.ui.layout.DefaultGameUILayout;
@@ -46,6 +47,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final EntityManager entityManager;
     private final Level level;
     private final InputState inputState = new InputState();
+    public static AnimationDataRegistry animationRegistry; // +++ NEW: AnimationDataRegistry instance
 
     // Systems - Declare all systems used
     private final MovementSystem movementSystem;
@@ -61,16 +63,16 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final LifetimeSystem lifetimeSystem;
     private final ParticlePhysicsSystem particlePhysicsSystem;
     private final CorpseDecaySystem corpseDecaySystem;
-    private final ExperienceSystem experienceSystem; // <<< Added ExperienceSystem instance
-    private final StatCalculationSystem statCalculationSystem; // <<< Added StatCalculationSystem instance
+    private final ExperienceSystem experienceSystem;
+    private final StatCalculationSystem statCalculationSystem;
     private final InteractionSystem interactionSystem;
     private final UIManager uiManager;
     private final DefaultGameUILayout gameUILayout;
 
 
     // Entity IDs
-    private int playerEntity = -1; // Initialize player entity ID to invalid (-1 indicates not spawned yet)
-    private int cameraEntity;      // ID for the camera entity (if used)
+    private int playerEntity = -1;
+    private int cameraEntity;
 
     /**
      * GameMain Constructor: Initializes the game window, loads assets,
@@ -79,12 +81,10 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     public GameMain() {
         // --- Window Setup ---
         setPreferredSize(new Dimension(WINDOW_WIDTH * SCALE, WINDOW_HEIGHT * SCALE));
-        setFocusable(true); // Allow canvas to receive keyboard input
+        setFocusable(true);
         setFocusTraversalKeysEnabled(false);
         requestFocusInWindow();
-        //requestFocus(); // Request focus immediately
 
-        // --- Rendering Buffer Setup ---
         image = new BufferedImage(WINDOW_WIDTH, WINDOW_HEIGHT, BufferedImage.TYPE_INT_RGB);
         pixels = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
@@ -92,11 +92,14 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         screen = new Screen(WINDOW_WIDTH, WINDOW_HEIGHT);
         keyboard = new Keyboard();
         addKeyListener(new GameKeyListener());
+        addMouseListener(new MouseInputAdapter());
+        addMouseMotionListener(this);
 
-        // <<< Add Mouse Listeners >>>
-        addMouseListener(new MouseInputAdapter()); // Add adapter for press/release/etc.
-        addMouseMotionListener(this); // Add motion listener (implements interface)
-        // -------------------------
+        // --- Initialize AnimationDataRegistry ---
+        if (animationRegistry == null) { // Ensure it's loaded once
+            animationRegistry = new AnimationDataRegistry();
+            log.info("AnimationDataRegistry initialized.");
+        }
 
         // --- Level Loading ---
         log.info("Loading level...");
@@ -106,46 +109,43 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // --- ECS and System Initialization ---
         log.info("Initializing ECS and Systems...");
         entityManager = new EntityManager();
-        // Pass necessary dependencies to each system's constructor
         movementSystem = new MovementSystem(entityManager);
-        animationSystem = new AnimationSystem(entityManager);
+        // +++ Pass animationRegistry to systems that need it +++
+        playerInputSystem = new PlayerInputSystem(entityManager, keyboard, animationRegistry);
+        aiSystem = new AISystem(entityManager, animationRegistry);
+        // ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        animationSystem = new AnimationSystem(entityManager); // AnimationSystem itself might not need the registry directly
+                                                            // if AnimationComponent is populated by input/AI systems.
         renderSystem = new RenderSystem(entityManager, screen);
         cameraSystem = new CameraSystem(entityManager, screen, level);
         collisionSystem = new CollisionSystem(entityManager, level);
-        playerInputSystem = new PlayerInputSystem(entityManager, keyboard);
         debugRenderSystem = new DebugRenderSystem(entityManager, screen, level);
-        aiSystem = new AISystem(entityManager);
         combatSystem = new CombatSystem(entityManager);
         visualEffectsSystem = new VisualEffectsSystem(entityManager);
         lifetimeSystem = new LifetimeSystem(entityManager);
         particlePhysicsSystem = new ParticlePhysicsSystem(entityManager);
-        experienceSystem = new ExperienceSystem(entityManager);             // <<< Instantiate ExperienceSystem
+        experienceSystem = new ExperienceSystem(entityManager);
         statCalculationSystem = new StatCalculationSystem(entityManager);
-        interactionSystem = new InteractionSystem(entityManager); // Instantiate InteractionSystem
-        corpseDecaySystem = new CorpseDecaySystem(entityManager); // Instantiate CorpseDecaySystem
-        uiManager = new UIManager(/* Pass entityManager if needed later */);
+        interactionSystem = new InteractionSystem(entityManager);
+        corpseDecaySystem = new CorpseDecaySystem(entityManager);
+        uiManager = new UIManager();
         log.info("Systems and UIManager initialized.");
 
         // --- Initial Entity Spawning ---
         spawnEntitiesFromMap();
-
-        // Create camera entity (its logic might be simple or complex depending on CameraSystem)
         cameraEntity = createCamera();
 
         // --- Post-Spawn Checks ---
         // Verify that the player was actually spawned from the map data
         if (playerEntity == -1) {
             log.error("CRITICAL: Player entity was not created. No player spawn point found in map? Exiting.");
-            // Handle this scenario - maybe throw exception or spawn default
             throw new RuntimeException("Failed to create player entity - No spawn point found.");
         } else {
             log.info("Player entity successfully created with ID: {}", playerEntity);
-            // Calculate initial stats for player and any spawned entities
             log.info("Performing initial stat calculation...");
-            statCalculationSystem.recalculateStats(playerEntity); // Calculate player stats
-            // Calculate stats for all entities with StatsComponent initially
+            statCalculationSystem.recalculateStats(playerEntity);
             for (int entityId : entityManager.getEntitiesWith(StatsComponent.class)) {
-                if (entityId != playerEntity) { // Avoid double calculation if player already done
+                if (entityId != playerEntity) {
                     statCalculationSystem.recalculateStats(entityId);
                 }
             }
@@ -154,7 +154,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
         // --- Build UI using Factory ---
         gameUILayout = DefaultGameUILayout.build(uiManager, WINDOW_WIDTH, WINDOW_HEIGHT, entityManager, playerEntity);
-
         log.info("GameMain initialization complete.");
     }
 
@@ -202,8 +201,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private int createPlayer(int spawnX, int spawnY) {
         log.debug("Creating Player at: ({}, {})", spawnX, spawnY);
         int entityId = entityManager.createEntity();
-        // Graphics
-        String playerSheetPath = "/assets/sprites/player.png"; // TODO: Verify path
+        String playerSheetPath = "/assets/sprites/player.png";
         int numDirections = 4;
         int framesPerDirection = 3;
         BufferedImage[][] walkFrames = new BufferedImage[numDirections][framesPerDirection];
@@ -213,10 +211,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         try {
             BufferedImage sheet = AssetLoader.loadImage(playerSheetPath);
             if (sheet != null && sheet.getWidth() >= playerSpriteSize * numDirections && sheet.getHeight() >= playerSpriteSize * framesPerDirection) {
-                // <<< Nested loop loading for Player Sheet Layout >>>
                 for (int frameRow = 0; frameRow < framesPerDirection; frameRow++) {
                     for (int dirCol = 0; dirCol < numDirections; dirCol++) {
-                        // Map sheet column to AnimationComponent direction constant
                         int directionIndex;
                         switch (dirCol) {
                             case 0: directionIndex = AnimationComponent.LEFT; break;  // Col 0 -> LEFT (1)
@@ -225,7 +221,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
                             case 3: directionIndex = AnimationComponent.RIGHT; break; // Col 3 -> RIGHT (2)
                             default: continue;
                         }
-                        // Load sprite for this direction and frame
                         walkFrames[directionIndex][frameRow] = AssetLoader.getSprite(sheet, dirCol, frameRow, playerSpriteSize, playerSpriteSize);
                         if (walkFrames[directionIndex][frameRow] == null || walkFrames[directionIndex][frameRow].getWidth() <= 1) {
                              log.warn("Warning: Failed player sprite load (Col:{}, Row:{}) -> Dir:{}", dirCol, frameRow, directionIndex);
@@ -246,7 +241,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             initialSprite = AssetLoader.createPlaceholderImage(playerSpriteSize, playerSpriteSize);
         }
 
-        // Components
         entityManager.addComponent(entityId, new PositionComponent(spawnX, spawnY));
         entityManager.addComponent(entityId, new VelocityComponent(0, 0));
         entityManager.addComponent(entityId, new SpriteComponent(initialSprite));
@@ -256,9 +250,9 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         entityManager.addComponent(entityId, new ColliderComponent(15, 14, 8, 15));
         entityManager.addComponent(entityId, new HealthComponent(100));
         entityManager.addComponent(entityId, new NameComponent("Lolzords"));
-        entityManager.addComponent(entityId, new AttackComponent(10f, 45f, 0.5f)); // Dmg=10, Range=45px, Cooldown=0.5s
-        entityManager.addComponent(entityId, new ExperienceComponent()); // <<< Add Experience Component
-        entityManager.addComponent(entityId, new StatsComponent()); // <<< Add Stats Component (with defaults)
+        entityManager.addComponent(entityId, new AttackComponent(10f, 45f, 0.5f));
+        entityManager.addComponent(entityId, new ExperienceComponent());
+        entityManager.addComponent(entityId, new StatsComponent());
         log.info("Player Entity Created with ID: {}", entityId);
         return entityId;
     }
@@ -474,8 +468,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         aiSystem.update(deltaTime); // AI now handles attacks
         interactionSystem.update(deltaTime);
         combatSystem.update(deltaTime);
-        experienceSystem.update(deltaTime);      // <<< Process DefeatedComponent, grant XP, add LevelUpEventComponent
-        statCalculationSystem.update(deltaTime); // <<< Process LevelUpEventComponent, recalculate stats
+        experienceSystem.update(deltaTime);
+        statCalculationSystem.update(deltaTime);
         particlePhysicsSystem.update(deltaTime);
         collisionSystem.update(deltaTime);
         movementSystem.update(deltaTime);
@@ -483,26 +477,17 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         visualEffectsSystem.update(deltaTime); // Update flash timers for TookDamageComponent
         corpseDecaySystem.update(deltaTime);
         cameraSystem.update(deltaTime);
-        animationSystem.update(deltaTime);
+        animationSystem.update(deltaTime);   // +++ IMPORTANT: AnimationSystem now needs deltaTime +++
 
-        // --- Update UI ---
-        uiManager.update(inputState, deltaTime); // Pass input state here later if input is refactored
-        // -----------------
+        uiManager.update(inputState, deltaTime);
 
-        // --- Handle Chat Submission (using Layout Facade) ---
-        if (gameUILayout != null && gameUILayout.isChatInputFocused()) { // Check focus via layout
-            String submitted = gameUILayout.getSubmittedChatTextAndClear(); // Get text via layout
+        if (gameUILayout != null && gameUILayout.isChatInputFocused()) {
+            String submitted = gameUILayout.getSubmittedChatTextAndClear();
             if (submitted != null) {
                 log.info("Chat Submitted: {}", submitted);
-                gameUILayout.addChatLine("You: " + submitted); // Add line via layout
-                // TODO: Send message to server / process chat command
-                //gameUILayout.unfocusChatInput(); // Unfocus via layout
+                gameUILayout.addChatLine("You: " + submitted);
             }
         }
-        // ---------------------------
-
-        // --- Clear Per-Frame Input Events ---
-        // Do this LAST in the update cycle
         inputState.clearFrameEvents();
         // ----------------------------------
     }
