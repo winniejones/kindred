@@ -25,3 +25,17 @@
 - Lombok is used in `engine` and `game` with `compileOnly` plus `annotationProcessor`; do not remove annotation processing when changing Gradle config.
 - There are currently no `src/test` files, but all subprojects are configured for JUnit 5.
 - Logging config is `engine/src/main/resources/logback.xml` with root level `DEBUG`, so `:game:run` is intentionally verbose.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues for this repo. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Triage uses the default five-label vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Domain docs use a single-context layout. See `docs/agents/domain.md`.
