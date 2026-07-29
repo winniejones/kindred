@@ -146,12 +146,12 @@ public class RenderSystem implements System {
                 HealthComponent health = entityManager.getComponent(entityId, HealthComponent.class);
                 NameComponent nameComp = entityManager.getComponent(entityId, NameComponent.class);
 
-                int centerX = pos.x + ((spriteComp.sprite != null) ? spriteComp.sprite.getWidth() / 2 : 16); // Center based on sprite
+                int centerX = pos.x + ((spriteComp.sprite != null) ? spriteComp.sprite.getWidth() / 2 : 16);
 
                 if (nameComp != null) {
                     int nameScreenX = centerX - screen.xOffset;
                     int nameScreenY = pos.y + nameYOffset - screen.yOffset;
-                    Color nameColor = Color.WHITE; // Default
+                    Color nameColor = Color.WHITE;
                     if(entityManager.hasComponent(entityId, PlayerComponent.class)) nameColor = Const.COLOR_TEXT_PLAYER_NAME;
                     else if(entityManager.hasComponent(entityId, EnemyComponent.class)) nameColor = Const.COLOR_TEXT_ENEMY_NAME;
 
