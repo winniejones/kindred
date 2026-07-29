@@ -67,7 +67,15 @@ To build the project, you would typically run:
 
 ## How to Run
 
-The main entry point for the game is `com.kindred.GameMain` in the `game` module. You can run this class from your IDE or configure a Gradle task to execute it.
+The main entry point for the game is `com.kindred.GameMain` in the `game` module.
+
+To start the game from the terminal, run:
+
+```bash
+./gradlew :game:run
+```
+
+You can also run `com.kindred.GameMain` directly from your IDE.
 
 ## Key Technologies / Libraries
 
