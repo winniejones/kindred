@@ -62,8 +62,4 @@ public class ForestCrisisState {
         }
         return completed;
     }
-
-    public boolean hasFinalCrisisOutcome() {
-        return false;
-    }
 }

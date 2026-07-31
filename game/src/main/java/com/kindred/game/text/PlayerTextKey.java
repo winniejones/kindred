@@ -5,7 +5,7 @@ public enum PlayerTextKey {
     OBSERVATION_PREDATOR_TRAIL("observation.predatorTrail"),
     PROMPT_INTERACT("prompt.interact"),
     FALLBACK_UNKNOWN_INPUT("fallback.unknownInput"),
-    FINAL_ELDER_COMBAT_REFLECTION("final.elder.combatReflection"),
+    CHAT_PLAYER_PREFIX("chat.playerPrefix"),
     TITLE_KINDRED("title.kindred"),
     END_CONTINUE_EXPLORING("end.continueExploring");
 

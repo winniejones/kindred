@@ -1,7 +1,6 @@
 package com.kindred.game.text;
 
 import java.util.Locale;
-import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
 public class PlayerTextResolver {
@@ -19,13 +18,5 @@ public class PlayerTextResolver {
 
     public String resolve(PlayerTextKey key) {
         return bundle.getString(key.key());
-    }
-
-    public boolean hasText(PlayerTextKey key) {
-        try {
-            return !resolve(key).isBlank();
-        } catch (MissingResourceException e) {
-            return false;
-        }
     }
 }

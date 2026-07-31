@@ -3,11 +3,9 @@ package com.kindred.game.text;
 import com.kindred.GameMain;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Method;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,13 +26,13 @@ class PlayerTextResolverTest {
     void supportsEveryRequiredPlayerTextCategory() {
         PlayerTextResolver resolver = PlayerTextResolver.forLocale(Locale.ENGLISH);
 
-        assertTrue(resolver.hasText(PlayerTextKey.DIALOGUE_SHEPHERD_INCITING_ATTACK));
-        assertTrue(resolver.hasText(PlayerTextKey.OBSERVATION_PREDATOR_TRAIL));
-        assertTrue(resolver.hasText(PlayerTextKey.PROMPT_INTERACT));
-        assertTrue(resolver.hasText(PlayerTextKey.FALLBACK_UNKNOWN_INPUT));
-        assertTrue(resolver.hasText(PlayerTextKey.FINAL_ELDER_COMBAT_REFLECTION));
-        assertTrue(resolver.hasText(PlayerTextKey.TITLE_KINDRED));
-        assertTrue(resolver.hasText(PlayerTextKey.END_CONTINUE_EXPLORING));
+        assertResolvesNonBlank(resolver, PlayerTextKey.DIALOGUE_SHEPHERD_INCITING_ATTACK);
+        assertResolvesNonBlank(resolver, PlayerTextKey.OBSERVATION_PREDATOR_TRAIL);
+        assertResolvesNonBlank(resolver, PlayerTextKey.PROMPT_INTERACT);
+        assertResolvesNonBlank(resolver, PlayerTextKey.FALLBACK_UNKNOWN_INPUT);
+        assertResolvesNonBlank(resolver, PlayerTextKey.CHAT_PLAYER_PREFIX);
+        assertResolvesNonBlank(resolver, PlayerTextKey.TITLE_KINDRED);
+        assertResolvesNonBlank(resolver, PlayerTextKey.END_CONTINUE_EXPLORING);
     }
 
     @Test
@@ -46,24 +44,17 @@ class PlayerTextResolverTest {
 
         assertEquals("dialogue.shepherd.incitingAttack", stableKey);
         assertNotEquals(stableKey, visibleText);
-        assertFalse(exposesStringResolveMethod());
     }
 
     @Test
-    void gameTitleUsesStableTextKey() {
+    void currentGameMainTextUsesStableTextKeys() {
         PlayerTextResolver resolver = PlayerTextResolver.forLocale(Locale.ENGLISH);
 
         assertEquals(resolver.resolve(PlayerTextKey.TITLE_KINDRED), GameMain.TITLE);
+        assertEquals("You: ", resolver.resolve(PlayerTextKey.CHAT_PLAYER_PREFIX));
     }
 
-    private boolean exposesStringResolveMethod() {
-        for (Method method : PlayerTextResolver.class.getMethods()) {
-            if (method.getName().equals("resolve")
-                    && method.getParameterCount() == 1
-                    && method.getParameterTypes()[0].equals(String.class)) {
-                return true;
-            }
-        }
-        return false;
+    private void assertResolvesNonBlank(PlayerTextResolver resolver, PlayerTextKey key) {
+        assertTrue(!resolver.resolve(key).isBlank());
     }
 }

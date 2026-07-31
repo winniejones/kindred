@@ -3,7 +3,6 @@ package com.kindred.game.forest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ForestCrisisStateTest {
@@ -19,8 +18,6 @@ class ForestCrisisStateTest {
 
         crisis.recordPredatorDefeat();
         assertEquals(OutcomeReadiness.COMBAT, crisis.evaluateOutcomeReadiness());
-
-        assertFalse(crisis.hasFinalCrisisOutcome());
     }
 
     @Test
@@ -36,7 +33,6 @@ class ForestCrisisStateTest {
         crisis.recordPredatorDefeat();
         crisis.recordPredatorDefeat();
         assertEquals(OutcomeReadiness.BALANCE, crisis.evaluateOutcomeReadiness());
-        assertFalse(crisis.hasFinalCrisisOutcome());
     }
 
     @Test
@@ -80,7 +76,7 @@ class ForestCrisisStateTest {
     }
 
     @Test
-    void recordsDiscoveredSignsAndElderInterpretationWithoutLockingFinalOutcome() {
+    void recordsDiscoveredSignsAndElderInterpretationWithoutChangingReadiness() {
         ForestCrisisState crisis = new ForestCrisisState();
 
         crisis.discoverSign(EnvironmentalSign.ABANDONED_GRAZING_SITE);
@@ -93,6 +89,5 @@ class ForestCrisisStateTest {
         assertTrue(crisis.hasDiscovered(EnvironmentalSign.PREDATOR_TRAIL));
         assertTrue(crisis.hasCompletedElderInterpretation());
         assertEquals(OutcomeReadiness.NONE, crisis.evaluateOutcomeReadiness());
-        assertFalse(crisis.hasFinalCrisisOutcome());
     }
 }

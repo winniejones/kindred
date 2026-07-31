@@ -38,8 +38,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     public static final int WINDOW_WIDTH = 900;
     public static final int WINDOW_HEIGHT = 500;
     public static final int SCALE = 2;
-    public static final String TITLE = PlayerTextResolver.forLocale(Locale.ENGLISH)
-            .resolve(PlayerTextKey.TITLE_KINDRED);
+    private static final PlayerTextResolver PLAYER_TEXT = PlayerTextResolver.forLocale(Locale.ENGLISH);
+    public static final String TITLE = PLAYER_TEXT.resolve(PlayerTextKey.TITLE_KINDRED);
 
     // Rendering Buffer
     private final BufferedImage image;
@@ -489,7 +489,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             String submitted = gameUILayout.getSubmittedChatTextAndClear();
             if (submitted != null) {
                 log.info("Chat Submitted: {}", submitted);
-                gameUILayout.addChatLine("You: " + submitted);
+                gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.CHAT_PLAYER_PREFIX) + submitted);
             }
         }
         inputState.clearFrameEvents();
