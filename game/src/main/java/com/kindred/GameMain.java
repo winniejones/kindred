@@ -13,6 +13,8 @@ import com.kindred.engine.resource.AnimationDataRegistry;
 import com.kindred.engine.resource.AssetLoader;
 import com.kindred.engine.ui.UIManager;
 import com.kindred.engine.ui.layout.DefaultGameUILayout;
+import com.kindred.game.text.PlayerTextKey;
+import com.kindred.game.text.PlayerTextResolver;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.swing.*;
@@ -22,6 +24,7 @@ import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 public class GameMain extends Canvas implements Runnable, MouseMotionListener {
@@ -35,7 +38,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     public static final int WINDOW_WIDTH = 900;
     public static final int WINDOW_HEIGHT = 500;
     public static final int SCALE = 2;
-    public static final String TITLE = "Kindred";
+    public static final String TITLE = PlayerTextResolver.forLocale(Locale.ENGLISH)
+            .resolve(PlayerTextKey.TITLE_KINDRED);
 
     // Rendering Buffer
     private final BufferedImage image;
