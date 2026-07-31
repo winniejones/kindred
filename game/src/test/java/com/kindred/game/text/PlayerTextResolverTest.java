@@ -15,35 +15,35 @@ class PlayerTextResolverTest {
     void resolvesPlayerFacingTextFromStableKeys() {
         PlayerTextResolver resolver = PlayerTextResolver.forLocale(Locale.ENGLISH);
 
-        assertEquals("The shepherd rushes into the village, breathless and afraid.",
-                resolver.resolve(PlayerTextKey.DIALOGUE_SHEPHERD_INCITING_ATTACK));
-        assertEquals("Deep pawprints. They are fresh and lead toward the forest edge.",
-                resolver.resolve(PlayerTextKey.OBSERVATION_PREDATOR_TRAIL));
-        assertEquals("Press E to interact.", resolver.resolve(PlayerTextKey.PROMPT_INTERACT));
+        assertEquals("This is dialogue text.", resolver.resolve(PlayerTextKey.DIALOGUE_EXAMPLE));
+        assertEquals("This is observation text.", resolver.resolve(PlayerTextKey.OBSERVATION_EXAMPLE));
+        assertEquals("This is prompt text.", resolver.resolve(PlayerTextKey.PROMPT_EXAMPLE));
     }
 
     @Test
     void supportsEveryRequiredPlayerTextCategory() {
         PlayerTextResolver resolver = PlayerTextResolver.forLocale(Locale.ENGLISH);
 
-        assertResolvesNonBlank(resolver, PlayerTextKey.DIALOGUE_SHEPHERD_INCITING_ATTACK);
-        assertResolvesNonBlank(resolver, PlayerTextKey.OBSERVATION_PREDATOR_TRAIL);
-        assertResolvesNonBlank(resolver, PlayerTextKey.PROMPT_INTERACT);
-        assertResolvesNonBlank(resolver, PlayerTextKey.FALLBACK_UNKNOWN_INPUT);
+        assertResolvesNonBlank(resolver, PlayerTextKey.DIALOGUE_EXAMPLE);
+        assertResolvesNonBlank(resolver, PlayerTextKey.OBSERVATION_EXAMPLE);
+        assertResolvesNonBlank(resolver, PlayerTextKey.PROMPT_EXAMPLE);
+        assertResolvesNonBlank(resolver, PlayerTextKey.FALLBACK_EXAMPLE);
+        assertResolvesNonBlank(resolver, PlayerTextKey.FINAL_LINE_EXAMPLE);
         assertResolvesNonBlank(resolver, PlayerTextKey.CHAT_PLAYER_PREFIX);
         assertResolvesNonBlank(resolver, PlayerTextKey.TITLE_KINDRED);
         assertResolvesNonBlank(resolver, PlayerTextKey.END_CONTINUE_EXPLORING);
     }
 
     @Test
-    void stableKeysAreSeparateFromVisibleText() {
+    void everyDeclaredStableKeyResolvesAndIsSeparateFromVisibleText() {
         PlayerTextResolver resolver = PlayerTextResolver.forLocale(Locale.ENGLISH);
 
-        String stableKey = PlayerTextKey.DIALOGUE_SHEPHERD_INCITING_ATTACK.key();
-        String visibleText = resolver.resolve(PlayerTextKey.DIALOGUE_SHEPHERD_INCITING_ATTACK);
+        for (PlayerTextKey key : PlayerTextKey.values()) {
+            String visibleText = resolver.resolve(key);
 
-        assertEquals("dialogue.shepherd.incitingAttack", stableKey);
-        assertNotEquals(stableKey, visibleText);
+            assertResolvesNonBlank(resolver, key);
+            assertNotEquals(key.key(), visibleText);
+        }
     }
 
     @Test

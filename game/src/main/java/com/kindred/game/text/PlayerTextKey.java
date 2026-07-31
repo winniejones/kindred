@@ -1,10 +1,11 @@
 package com.kindred.game.text;
 
 public enum PlayerTextKey {
-    DIALOGUE_SHEPHERD_INCITING_ATTACK("dialogue.shepherd.incitingAttack"),
-    OBSERVATION_PREDATOR_TRAIL("observation.predatorTrail"),
-    PROMPT_INTERACT("prompt.interact"),
-    FALLBACK_UNKNOWN_INPUT("fallback.unknownInput"),
+    DIALOGUE_EXAMPLE("dialogue.example"),
+    OBSERVATION_EXAMPLE("observation.example"),
+    PROMPT_EXAMPLE("prompt.example"),
+    FALLBACK_EXAMPLE("fallback.example"),
+    FINAL_LINE_EXAMPLE("finalLine.example"),
     CHAT_PLAYER_PREFIX("chat.playerPrefix"),
     TITLE_KINDRED("title.kindred"),
     END_CONTINUE_EXPLORING("end.continueExploring");
