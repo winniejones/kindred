@@ -13,8 +13,12 @@ import com.kindred.engine.resource.AnimationDataRegistry;
 import com.kindred.engine.resource.AssetLoader;
 import com.kindred.engine.ui.UIManager;
 import com.kindred.engine.ui.layout.DefaultGameUILayout;
+import com.kindred.game.forest.ForestCrisisGreybox;
 import com.kindred.game.forest.ForestCrisisIntroductionPath;
 import com.kindred.game.forest.ForestCrisisState;
+import com.kindred.game.forest.GreyboxArea;
+import com.kindred.game.forest.GreyboxMarker;
+import com.kindred.game.forest.GreyboxPoint;
 import com.kindred.game.forest.IntroductionMoment;
 import com.kindred.game.text.PlayerTextKey;
 import com.kindred.game.text.PlayerTextResolver;
@@ -76,8 +80,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final UIManager uiManager;
     private final DefaultGameUILayout gameUILayout;
     private final ForestCrisisState forestCrisisState;
+    private final ForestCrisisGreybox forestCrisisGreybox;
     private final ForestCrisisIntroductionPath forestCrisisIntroductionPath;
-    private int forestCrisisIntroductionStep = 0;
 
 
     // Entity IDs
@@ -140,6 +144,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         corpseDecaySystem = new CorpseDecaySystem(entityManager);
         uiManager = new UIManager();
         forestCrisisState = new ForestCrisisState();
+        forestCrisisGreybox = ForestCrisisGreybox.createDefault(forestCrisisState);
         forestCrisisIntroductionPath = ForestCrisisIntroductionPath.createDefault(forestCrisisState);
         log.info("Systems and UIManager initialized.");
 
@@ -154,6 +159,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             throw new RuntimeException("Failed to create player entity - No spawn point found.");
         } else {
             log.info("Player entity successfully created with ID: {}", playerEntity);
+            movePlayerToGreyboxStart();
             log.info("Performing initial stat calculation...");
             statCalculationSystem.recalculateStats(playerEntity);
             for (int entityId : entityManager.getEntitiesWith(StatsComponent.class)) {
@@ -166,6 +172,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
         // --- Build UI using Factory ---
         gameUILayout = DefaultGameUILayout.build(uiManager, WINDOW_WIDTH, WINDOW_HEIGHT, entityManager, playerEntity);
+        createForestCrisisGreyboxMarkers();
         showIntroductionMoment(forestCrisisIntroductionPath.safeMoment());
         showIntroductionMoment(forestCrisisIntroductionPath.interactionHint());
         log.info("GameMain initialization complete.");
@@ -516,6 +523,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         level.render(screen);
         renderSystem.render();
         debugRenderSystem.render();
+        renderForestCrisisGreyboxAreas();
 
         // --- Draw buffer to screen ---
         System.arraycopy(screen.pixels, 0, pixels, 0, pixels.length);
@@ -563,22 +571,64 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         }
     }
 
-    private void advanceForestCrisisIntroduction() {
-        IntroductionMoment moment = switch (forestCrisisIntroductionStep) {
-            case 0 -> forestCrisisIntroductionPath.hearShepherdReport();
-            case 1 -> forestCrisisIntroductionPath.reachShepherdsFarm();
-            case 2 -> forestCrisisIntroductionPath.examinePredatorTrail();
-            default -> null;
-        };
-
-        if (moment != null) {
-            showIntroductionMoment(moment);
-            forestCrisisIntroductionStep++;
-        }
+    private void interactWithForestCrisisGreybox() {
+        forestCrisisGreybox.interactAt(currentPlayerPoint()).ifPresent(this::showIntroductionMoment);
     }
 
     private void showIntroductionMoment(IntroductionMoment moment) {
         gameUILayout.addChatLine(PLAYER_TEXT.resolve(moment.textKey()));
+    }
+
+    private GreyboxPoint currentPlayerPoint() {
+        PositionComponent position = entityManager.getComponent(playerEntity, PositionComponent.class);
+        if (position == null) {
+            return forestCrisisGreybox.playerStart();
+        }
+        return new GreyboxPoint(position.x, position.y);
+    }
+
+    private void movePlayerToGreyboxStart() {
+        PositionComponent position = entityManager.getComponent(playerEntity, PositionComponent.class);
+        if (position != null) {
+            GreyboxPoint start = forestCrisisGreybox.playerStart();
+            position.x = start.x();
+            position.y = start.y();
+        }
+    }
+
+    private void createForestCrisisGreyboxMarkers() {
+        for (GreyboxMarker marker : forestCrisisGreybox.markers()) {
+            createGreyboxMarker(marker);
+        }
+    }
+
+    private void createGreyboxMarker(GreyboxMarker marker) {
+        int entityId = entityManager.createEntity();
+        entityManager.addComponent(entityId, new PositionComponent(marker.position().x(), marker.position().y()));
+        entityManager.addComponent(entityId, new SpriteComponent(createColorSprite(marker.color())));
+        if (marker.interactable()) {
+            entityManager.addComponent(entityId, new InteractableComponent(ForestCrisisGreybox.INTERACTION_RANGE));
+        }
+    }
+
+    private BufferedImage createColorSprite(int color) {
+        BufferedImage sprite = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = sprite.createGraphics();
+        graphics.setColor(new Color(color, true));
+        graphics.fillRect(0, 0, 16, 16);
+        graphics.dispose();
+        return sprite;
+    }
+
+    private void renderForestCrisisGreyboxAreas() {
+        renderGreyboxArea(forestCrisisGreybox.village(), 0xFF7777AA);
+        renderGreyboxArea(forestCrisisGreybox.shepherdsFarm(), 0xFFAA8844);
+        renderGreyboxArea(forestCrisisGreybox.threatZone(), 0xFFAA3333);
+        renderGreyboxArea(forestCrisisGreybox.safePlace(), 0xFF33AA66);
+    }
+
+    private void renderGreyboxArea(GreyboxArea area, int color) {
+        screen.drawRect(area.x(), area.y(), area.width(), area.height(), color, true);
     }
 
     public static void main(String[] args) {
@@ -702,8 +752,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
                 }
             }
             else if (keyCode == KeyEvent.VK_E && gameUILayout != null && !gameUILayout.isChatInputFocused()) {
-                advanceForestCrisisIntroduction();
-                consumed = true;
+                interactWithForestCrisisGreybox();
             }
 
             // --- Pass key press to focused UI element (Chat) ---
