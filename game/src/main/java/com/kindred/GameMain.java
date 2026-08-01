@@ -13,6 +13,9 @@ import com.kindred.engine.resource.AnimationDataRegistry;
 import com.kindred.engine.resource.AssetLoader;
 import com.kindred.engine.ui.UIManager;
 import com.kindred.engine.ui.layout.DefaultGameUILayout;
+import com.kindred.game.forest.ForestCrisisIntroductionPath;
+import com.kindred.game.forest.ForestCrisisState;
+import com.kindred.game.forest.IntroductionMoment;
 import com.kindred.game.text.PlayerTextKey;
 import com.kindred.game.text.PlayerTextResolver;
 import lombok.extern.slf4j.Slf4j;
@@ -72,6 +75,9 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final InteractionSystem interactionSystem;
     private final UIManager uiManager;
     private final DefaultGameUILayout gameUILayout;
+    private final ForestCrisisState forestCrisisState;
+    private final ForestCrisisIntroductionPath forestCrisisIntroductionPath;
+    private int forestCrisisIntroductionStep = 0;
 
 
     // Entity IDs
@@ -133,6 +139,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         interactionSystem = new InteractionSystem(entityManager);
         corpseDecaySystem = new CorpseDecaySystem(entityManager);
         uiManager = new UIManager();
+        forestCrisisState = new ForestCrisisState();
+        forestCrisisIntroductionPath = ForestCrisisIntroductionPath.createDefault(forestCrisisState);
         log.info("Systems and UIManager initialized.");
 
         // --- Initial Entity Spawning ---
@@ -158,6 +166,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
         // --- Build UI using Factory ---
         gameUILayout = DefaultGameUILayout.build(uiManager, WINDOW_WIDTH, WINDOW_HEIGHT, entityManager, playerEntity);
+        showIntroductionMoment(forestCrisisIntroductionPath.safeMoment());
+        showIntroductionMoment(forestCrisisIntroductionPath.interactionHint());
         log.info("GameMain initialization complete.");
     }
 
@@ -553,6 +563,24 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         }
     }
 
+    private void advanceForestCrisisIntroduction() {
+        IntroductionMoment moment = switch (forestCrisisIntroductionStep) {
+            case 0 -> forestCrisisIntroductionPath.hearShepherdReport();
+            case 1 -> forestCrisisIntroductionPath.reachShepherdsFarm();
+            case 2 -> forestCrisisIntroductionPath.examinePredatorTrail();
+            default -> null;
+        };
+
+        if (moment != null) {
+            showIntroductionMoment(moment);
+            forestCrisisIntroductionStep++;
+        }
+    }
+
+    private void showIntroductionMoment(IntroductionMoment moment) {
+        gameUILayout.addChatLine(PLAYER_TEXT.resolve(moment.textKey()));
+    }
+
     public static void main(String[] args) {
         GameMain game = new GameMain();
         game.frame = new JFrame(TITLE);
@@ -672,6 +700,10 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
                     // Focus loss happens in update loop after text is processed
                     consumed = true;
                 }
+            }
+            else if (keyCode == KeyEvent.VK_E && gameUILayout != null && !gameUILayout.isChatInputFocused()) {
+                advanceForestCrisisIntroduction();
+                consumed = true;
             }
 
             // --- Pass key press to focused UI element (Chat) ---
