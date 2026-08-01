@@ -13,13 +13,7 @@ import com.kindred.engine.resource.AnimationDataRegistry;
 import com.kindred.engine.resource.AssetLoader;
 import com.kindred.engine.ui.UIManager;
 import com.kindred.engine.ui.layout.DefaultGameUILayout;
-import com.kindred.game.forest.ForestCrisisGreybox;
-import com.kindred.game.forest.ForestCrisisIntroductionPath;
-import com.kindred.game.forest.ForestCrisisState;
-import com.kindred.game.forest.GreyboxArea;
-import com.kindred.game.forest.GreyboxMarker;
-import com.kindred.game.forest.GreyboxPoint;
-import com.kindred.game.forest.IntroductionMoment;
+import com.kindred.game.forest.*;
 import com.kindred.game.text.PlayerTextKey;
 import com.kindred.game.text.PlayerTextResolver;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +24,12 @@ import java.awt.event.*;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class GameMain extends Canvas implements Runnable, MouseMotionListener {
@@ -82,6 +80,9 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final ForestCrisisState forestCrisisState;
     private final ForestCrisisGreybox forestCrisisGreybox;
     private final ForestCrisisIntroductionPath forestCrisisIntroductionPath;
+    private final ForestCrisisWolfEncounter forestCrisisWolfEncounter;
+    private final Map<String, Integer> wolfEntityIds = new HashMap<>();
+    private final Set<String> recordedWolfDefeats = new HashSet<>();
 
 
     // Entity IDs
@@ -146,6 +147,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         forestCrisisState = new ForestCrisisState();
         forestCrisisGreybox = ForestCrisisGreybox.createDefault(forestCrisisState);
         forestCrisisIntroductionPath = ForestCrisisIntroductionPath.createDefault(forestCrisisState);
+        forestCrisisWolfEncounter = ForestCrisisWolfEncounter.createDefault(forestCrisisGreybox, forestCrisisState);
         log.info("Systems and UIManager initialized.");
 
         // --- Initial Entity Spawning ---
@@ -486,8 +488,10 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         // --- Update Systems in Order ---
         playerInputSystem.update(deltaTime);
         aiSystem.update(deltaTime); // AI now handles attacks
+        updateForestCrisisWolves();
         interactionSystem.update(deltaTime);
         combatSystem.update(deltaTime);
+        recordForestCrisisWolfDefeats();
         experienceSystem.update(deltaTime);
         statCalculationSystem.update(deltaTime);
         particlePhysicsSystem.update(deltaTime);
@@ -583,21 +587,134 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         if (position == null) {
             return forestCrisisGreybox.playerStart();
         }
-        return new GreyboxPoint(position.x, position.y);
+        ColliderComponent collider = entityManager.getComponent(playerEntity, ColliderComponent.class);
+        if (collider == null) {
+            return new GreyboxPoint(position.x, position.y);
+        }
+        return new GreyboxPoint(
+                position.x + collider.offsetX + collider.hitboxWidth / 2,
+                position.y + collider.offsetY + collider.hitboxHeight / 2);
     }
 
     private void createForestCrisisGreyboxMarkers() {
         for (GreyboxMarker marker : forestCrisisGreybox.markers()) {
+            if (isWolfMarker(marker)) {
+                continue;
+            }
             createGreyboxMarker(marker);
+        }
+        createForestCrisisWolfMarkers();
+    }
+
+    private boolean isWolfMarker(GreyboxMarker marker) {
+        for (WolfPlaceholder wolf : forestCrisisWolfEncounter.wolves()) {
+            if (wolf.spawnPosition().equals(marker.position())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void createForestCrisisWolfMarkers() {
+        for (WolfPlaceholder wolf : forestCrisisWolfEncounter.wolves()) {
+            int entityId = createGreyboxMarker(new GreyboxMarker(wolf.spawnPosition(), 0xFF777777, false));
+            entityManager.addComponent(entityId, new EnemyComponent());
+            entityManager.addComponent(entityId, new ColliderComponent(16, 16));
+            entityManager.addComponent(entityId, new HealthComponent(20));
+            entityManager.addComponent(entityId, new AttackComponent(4f, ForestCrisisWolfEncounter.WOLF_ATTACK_RANGE, 1.0f));
+            entityManager.addComponent(entityId, new NameComponent(wolf.id()));
+            entityManager.addComponent(entityId, new ParticipantComponent());
+            entityManager.addComponent(entityId, new XPValueComponent(0));
+            wolfEntityIds.put(wolf.id(), entityId);
+        }
+        validateForestCrisisWolfEntities();
+    }
+
+    private void validateForestCrisisWolfEntities() {
+        for (WolfPlaceholder wolf : forestCrisisWolfEncounter.wolves()) {
+            Integer entityId = wolfEntityIds.get(wolf.id());
+            if (entityId == null || !entityManager.isEntityActive(entityId)) {
+                throw new IllegalStateException("Forest Crisis wolf entity missing for " + wolf.id());
+            }
+            NameComponent name = entityManager.getComponent(entityId, NameComponent.class);
+            if (name == null || !wolf.id().equals(name.name)) {
+                throw new IllegalStateException("Forest Crisis wolf entity ID mismatch for " + wolf.id());
+            }
+            log.info("Forest Crisis wolf {} wired to entity {} with home area {}", wolf.id(), entityId, wolf.homeArea());
         }
     }
 
-    private void createGreyboxMarker(GreyboxMarker marker) {
+    private int createGreyboxMarker(GreyboxMarker marker) {
         int entityId = entityManager.createEntity();
         entityManager.addComponent(entityId, new PositionComponent(marker.position().x(), marker.position().y()));
         entityManager.addComponent(entityId, new SpriteComponent(createColorSprite(marker.color())));
         if (marker.interactable()) {
             entityManager.addComponent(entityId, new InteractableComponent(ForestCrisisGreybox.INTERACTION_RANGE));
+        }
+        return entityId;
+    }
+
+    private void updateForestCrisisWolves() {
+        WolfEncounterUpdate update = forestCrisisWolfEncounter.update(currentPlayerPoint());
+        showWolfEncounterMoment(update.event());
+
+        for (WolfRuntimeState wolf : update.wolves()) {
+            Integer entityId = wolfEntityIds.get(wolf.id());
+            if (entityId == null || !entityManager.isEntityActive(entityId) || entityManager.hasComponent(entityId, DeadComponent.class)) {
+                continue;
+            }
+            PositionComponent position = entityManager.getComponent(entityId, PositionComponent.class);
+            if (position != null) {
+                position.x = wolf.position().x();
+                position.y = wolf.position().y();
+            }
+            if (wolf.state() == WolfState.PURSUING && isWolfInAttackRange(entityId)) {
+                AttackComponent attack = entityManager.getComponent(entityId, AttackComponent.class);
+                if (attack != null && attack.currentCooldown <= 0) {
+                    entityManager.addComponent(entityId, new AttackActionComponent());
+                    attack.currentCooldown = attack.attackCooldown;
+                }
+            }
+        }
+    }
+
+    private boolean isWolfInAttackRange(int wolfEntityId) {
+        PositionComponent wolfPosition = entityManager.getComponent(wolfEntityId, PositionComponent.class);
+        PositionComponent playerPosition = entityManager.getComponent(playerEntity, PositionComponent.class);
+        AttackComponent attack = entityManager.getComponent(wolfEntityId, AttackComponent.class);
+        if (wolfPosition == null || playerPosition == null || attack == null) {
+            return false;
+        }
+        int dx = playerPosition.x - wolfPosition.x;
+        int dy = playerPosition.y - wolfPosition.y;
+        return dx * dx + dy * dy <= attack.range * attack.range;
+    }
+
+    private void recordForestCrisisWolfDefeats() {
+        for (Map.Entry<String, Integer> wolf : wolfEntityIds.entrySet()) {
+            if (recordedWolfDefeats.contains(wolf.getKey()) || !entityManager.hasComponent(wolf.getValue(), DeadComponent.class)) {
+                continue;
+            }
+            recordedWolfDefeats.add(wolf.getKey());
+            WolfEncounterUpdate update = forestCrisisWolfEncounter.recordDefeat(wolf.getKey());
+            update.developmentLogMessage().ifPresent(this::emitForestCrisisDevelopmentLog);
+            showWolfEncounterMoment(update.event());
+        }
+    }
+
+    private void emitForestCrisisDevelopmentLog(String message) {
+        log.info(message);
+        System.out.println(message);
+    }
+
+    private void showWolfEncounterMoment(WolfEncounterEvent event) {
+        switch (event) {
+            case WARNING -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.WOLF_ENCOUNTER_WARNING));
+            case CONTACT_STARTED -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.WOLF_ENCOUNTER_HOSTILE_CONTACT));
+            case CONTACT_BROKEN -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.WOLF_ENCOUNTER_CONTACT_BROKEN));
+            case WOLF_DEFEATED -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.WOLF_ENCOUNTER_DEFEATED));
+            case NONE -> {
+            }
         }
     }
 
@@ -615,6 +732,10 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         renderGreyboxArea(forestCrisisGreybox.shepherdsFarm(), 0xFFAA8844);
         renderGreyboxArea(forestCrisisGreybox.threatZone(), 0xFFAA3333);
         renderGreyboxArea(forestCrisisGreybox.safePlace(), 0xFF33AA66);
+        for (WolfPlaceholder wolf : forestCrisisWolfEncounter.wolves()) {
+            renderGreyboxArea(wolf.warningArea(), 0xFFCCCC44);
+            renderGreyboxArea(wolf.contactArea(), 0xFFFF8844);
+        }
     }
 
     private void renderGreyboxArea(GreyboxArea area, int color) {

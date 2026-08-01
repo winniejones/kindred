@@ -10,22 +10,38 @@ public class ForestCrisisGreybox {
     public static final String LEVEL_RESOURCE = "/assets/level/forest_crisis_greybox_map.png";
     public static final int TILE_SIZE = 16;
     public static final int INTERACTION_RANGE = 44;
+    public static final int MIN_WARNING_MARGIN_TILES = 4;
 
     private final ForestCrisisState crisis;
     private final ShepherdIntroductionDialogue shepherdDialogue;
     private final GreyboxArea village = new GreyboxArea(64, 64, 176, 176);
-    private final GreyboxArea shepherdsFarm = new GreyboxArea(384, 80, 192, 192);
-    private final GreyboxArea threatZone = new GreyboxArea(480, 272, 144, 144);
-    private final GreyboxArea safePlace = new GreyboxArea(392, 88, 96, 88);
+    private final GreyboxArea shepherdsFarm = new GreyboxArea(384, 80, 240, 240);
+    private final GreyboxArea threatZone = new GreyboxArea(320, 192, 560, 896);
+    private final GreyboxArea safePlace = new GreyboxArea(384, 240, 128, 112);
     private final GreyboxPoint playerStart = new GreyboxPoint(120, 120);
     private final GreyboxPoint shepherdPosition = new GreyboxPoint(184, 136);
     private final GreyboxPoint farmApproach = new GreyboxPoint(432, 160);
     private final GreyboxPoint attackAftermathPosition = new GreyboxPoint(456, 152);
     private final GreyboxPoint predatorTrailPosition = new GreyboxPoint(500, 192);
     private final List<WolfPlaceholder> wolfPlaceholders = List.of(
-            new WolfPlaceholder("wolf-1", new GreyboxPoint(520, 312), new GreyboxArea(496, 288, 64, 64)),
-            new WolfPlaceholder("wolf-2", new GreyboxPoint(560, 336), new GreyboxArea(536, 312, 64, 64)),
-            new WolfPlaceholder("wolf-3", new GreyboxPoint(600, 376), new GreyboxArea(576, 352, 48, 64)));
+            new WolfPlaceholder(
+                    "wolf-1",
+                    new GreyboxPoint(560, 496),
+                    new GreyboxArea(512, 448, 128, 128),
+                    new GreyboxArea(448, 384, 224, 224),
+                    new GreyboxArea(528, 464, 64, 64)),
+            new WolfPlaceholder(
+                    "wolf-2",
+                    new GreyboxPoint(728, 752),
+                    new GreyboxArea(680, 704, 128, 128),
+                    new GreyboxArea(608, 640, 240, 224),
+                    new GreyboxArea(696, 720, 64, 64)),
+            new WolfPlaceholder(
+                    "wolf-3",
+                    new GreyboxPoint(472, 944),
+                    new GreyboxArea(424, 896, 128, 128),
+                    new GreyboxArea(352, 832, 224, 224),
+                    new GreyboxArea(440, 912, 64, 64)));
     private final List<GreyboxMarker> markers = List.of(
             new GreyboxMarker(shepherdPosition, 0xFFB8874A, true),
             new GreyboxMarker(attackAftermathPosition, 0xFF8B5A2B, false),

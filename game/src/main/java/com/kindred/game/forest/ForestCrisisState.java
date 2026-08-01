@@ -14,6 +14,10 @@ public class ForestCrisisState {
         predatorDefeats++;
     }
 
+    public int predatorDefeats() {
+        return predatorDefeats;
+    }
+
     public void markAlternativeLoggingArea() {
         alternativeLoggingAreaMarked = true;
     }

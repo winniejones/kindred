@@ -8,13 +8,13 @@ Run from the repository root:
 ./gradlew :game:run
 ```
 
-The runtime loads `/assets/level/forest_crisis_greybox_map.png` as the authoritative level for this path, so the visible greybox and tile collision should agree.
+The runtime loads `/assets/level/forest_crisis_greybox_map.png` as the authoritative level for this path, so the visible greybox and tile collision should agree. The current greybox map is `60 x 96` tiles.
 
 ## Controls
 
 - Move with `WASD` or arrow keys.
 - Interact with `E`.
-- Attack remains on `Space`, but Forest Crisis wolf behavior is not part of this greybox prerequisite.
+- Attack remains on `Space`.
 - Toggle chat input with `Ctrl+Enter`.
 
 ## Expected Path
@@ -28,12 +28,20 @@ The runtime loads `/assets/level/forest_crisis_greybox_map.png` as the authorita
 7. Confirm the Predator Trail marker near the farm/forest edge.
 8. Press `E` away from the Predator Trail marker. The trail should not be examined.
 9. Walk to the Predator Trail marker and press `E` within range. Low-key Observation Text appears.
-10. The red outlined rectangle is the placeholder Threat Zone.
-11. The green outlined rectangle is the placeholder Safe Place.
-12. Three grey placeholder wolf markers exist inside the Threat Zone. They are spawn/home placeholders only; they should not pursue, warn, attack, or break contact until issue #8.
+10. The large red outlined rectangle is the placeholder Threat Zone.
+11. The green outlined rectangle is the placeholder Safe Place. It is inside the red Threat Zone so Safe Place escape can be tested separately from leaving the Threat Zone.
+12. Three grey wolf markers exist inside the Threat Zone, separated enough that normal movement should activate one wolf at a time.
+13. Yellow rectangles are temporary wolf warning areas. Orange rectangles are temporary hostile-contact areas. Each orange area sits inside its yellow area with at least four tiles of warning-only margin.
+14. Approach each wolf through its yellow rectangle without stepping into orange. A warning line should appear, and that wolf should not pursue or attack yet.
+15. Walk around in the same yellow-only space. The wolf should remain warned without immediately starting hostile contact.
+16. Step into that wolf's orange rectangle. A hostile-contact line should appear, and that wolf should begin pursuing within its authored home area.
+17. Fight or turn inside the enlarged Threat Zone. There should be room to reposition before choosing an escape route.
+18. Leave the Threat Zone. Contact should break and the wolf should fall back toward home instead of following indefinitely.
+19. Re-enter hostile contact, then retreat into the green Safe Place while still inside the red Threat Zone. Contact should break because of Safe Place entry, and the wolf should not enter the Safe Place.
+20. Repeat warning/contact/return checks for all three wolves. Each wolf should activate from its own yellow/orange area.
+21. Defeat wolves with `Space`. The terminal prints `Forest Crisis Predator Defeat progress: N/2 after wolf-X` via stdout and the logger. Two relevant wolf defeats make the combat outcome ready internally, but no final outcome or slice completion should trigger in this increment.
 
 ## Out Of Scope For This Playtest
 
-- Wolf pursuit, warning, attack, and breaking contact.
 - Healing, food, defeat recovery, XP, level-up, Elder dialogue, Logger dialogue, Balance actions, or crisis completion.
 - Journal, checklist, counter, objective marker, or production artwork.

@@ -25,6 +25,9 @@ class ForestCrisisGreyboxLevelTest {
 
     @Test
     void villageSpawnIsAuthoritativeAndPlayerColliderStartsOnWalkableTiles() {
+        assertEquals(60, level.getWidth());
+        assertEquals(96, level.getHeight());
+
         List<SpawnPoint> playerSpawns = level.getSpawnPoints().stream()
                 .filter(spawn -> spawn.getType() == SpawnPoint.SpawnType.PLAYER)
                 .toList();
@@ -41,6 +44,7 @@ class ForestCrisisGreyboxLevelTest {
         assertReachable(greybox.shepherdPosition(), greybox.shepherdsFarmApproach());
         assertReachable(greybox.shepherdsFarmApproach(), greybox.attackAftermathPosition());
         assertReachable(greybox.shepherdsFarmApproach(), greybox.predatorTrailPosition());
+        assertReachable(greybox.predatorTrailPosition(), greybox.safePlaceCenter());
     }
 
     @Test
@@ -53,6 +57,21 @@ class ForestCrisisGreyboxLevelTest {
         for (GreyboxMarker marker : greybox.markers()) {
             assertInBounds(marker.position());
             assertFalse(level.isSolid(tileX(marker.position()), tileY(marker.position())));
+        }
+    }
+
+    @Test
+    void wolvesSafePlaceAndEscapeRoutesRemainReachableAfterResize() {
+        assertReachable(greybox.playerStart(), greybox.safePlaceCenter());
+        assertReachable(greybox.safePlaceCenter(), new GreyboxPoint(greybox.threatZone().x() - ForestCrisisGreybox.TILE_SIZE, greybox.safePlaceCenter().y()));
+
+        for (WolfPlaceholder wolf : greybox.wolfPlaceholders()) {
+            assertAreaInBoundsAndWalkable(wolf.warningArea());
+            assertAreaInBoundsAndWalkable(wolf.contactArea());
+            assertReachable(greybox.playerStart(), wolf.warningArea().center());
+            assertReachable(wolf.warningArea().center(), wolf.contactArea().center());
+            assertReachable(wolf.contactArea().center(), greybox.safePlaceCenter());
+            assertReachable(wolf.contactArea().center(), new GreyboxPoint(greybox.threatZone().x() - ForestCrisisGreybox.TILE_SIZE, wolf.contactArea().center().y()));
         }
     }
 
@@ -80,6 +99,19 @@ class ForestCrisisGreyboxLevelTest {
             }
         }
         assertFalse(level.isSolid(right / ForestCrisisGreybox.TILE_SIZE, bottom / ForestCrisisGreybox.TILE_SIZE));
+    }
+
+    private void assertAreaInBoundsAndWalkable(GreyboxArea area) {
+        assertPointInBoundsAndWalkable(new GreyboxPoint(area.x(), area.y()));
+        assertPointInBoundsAndWalkable(new GreyboxPoint(area.x() + area.width() - 1, area.y()));
+        assertPointInBoundsAndWalkable(new GreyboxPoint(area.x(), area.y() + area.height() - 1));
+        assertPointInBoundsAndWalkable(new GreyboxPoint(area.x() + area.width() - 1, area.y() + area.height() - 1));
+        assertPointInBoundsAndWalkable(area.center());
+    }
+
+    private void assertPointInBoundsAndWalkable(GreyboxPoint point) {
+        assertInBounds(point);
+        assertFalse(level.isSolid(tileX(point), tileY(point)));
     }
 
     private void assertReachable(GreyboxPoint start, GreyboxPoint goal) {
