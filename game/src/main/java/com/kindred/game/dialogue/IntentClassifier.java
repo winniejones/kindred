@@ -40,7 +40,7 @@ public class IntentClassifier {
         if (containsAny(input, "help", "need help", "can you help")) {
             matches.add(DialogueIntention.ASK_FOR_HELP);
         }
-        if (containsAny(input, "clarify", "what do you mean", "explain that")) {
+        if (containsAny(input, "clarify", "what do you mean", "what happened", "explain that")) {
             matches.add(DialogueIntention.CLARIFY);
         }
         if (containsAny(input, "tracks", "pawprints", "wolf tracks", "predator tracks")) {
