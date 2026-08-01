@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class ForestCrisisGreybox {
+    public static final String LEVEL_RESOURCE = "/assets/level/forest_crisis_greybox_map.png";
+    public static final int TILE_SIZE = 16;
     public static final int INTERACTION_RANGE = 44;
 
     private final ForestCrisisState crisis;

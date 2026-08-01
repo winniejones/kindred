@@ -8,6 +8,8 @@ Run from the repository root:
 ./gradlew :game:run
 ```
 
+The runtime loads `/assets/level/forest_crisis_greybox_map.png` as the authoritative level for this path, so the visible greybox and tile collision should agree.
+
 ## Controls
 
 - Move with `WASD` or arrow keys.

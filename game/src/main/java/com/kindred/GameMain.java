@@ -117,7 +117,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
 
         // --- Level Loading ---
         log.info("Loading level...");
-        level = MapLoader.loadLevelFromImage("/assets/level/spawn_map.png", 16);
+        level = MapLoader.loadLevelFromImage(ForestCrisisGreybox.LEVEL_RESOURCE, ForestCrisisGreybox.TILE_SIZE);
         log.info("Level loading complete.");
 
         // --- ECS and System Initialization ---
@@ -159,7 +159,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             throw new RuntimeException("Failed to create player entity - No spawn point found.");
         } else {
             log.info("Player entity successfully created with ID: {}", playerEntity);
-            movePlayerToGreyboxStart();
             log.info("Performing initial stat calculation...");
             statCalculationSystem.recalculateStats(playerEntity);
             for (int entityId : entityManager.getEntitiesWith(StatsComponent.class)) {
@@ -585,15 +584,6 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             return forestCrisisGreybox.playerStart();
         }
         return new GreyboxPoint(position.x, position.y);
-    }
-
-    private void movePlayerToGreyboxStart() {
-        PositionComponent position = entityManager.getComponent(playerEntity, PositionComponent.class);
-        if (position != null) {
-            GreyboxPoint start = forestCrisisGreybox.playerStart();
-            position.x = start.x();
-            position.y = start.y();
-        }
     }
 
     private void createForestCrisisGreyboxMarkers() {
