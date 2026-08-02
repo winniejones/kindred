@@ -15,6 +15,8 @@ The runtime loads `/assets/level/forest_crisis_greybox_map.png` as the authorita
 - Move with `WASD` or arrow keys.
 - Interact with `E`.
 - Attack remains on `Space`.
+- Use a Bandage with `B`.
+- Use Food with `F`.
 - Toggle chat input with `Ctrl+Enter`.
 
 ## Expected Path
@@ -41,7 +43,26 @@ The runtime loads `/assets/level/forest_crisis_greybox_map.png` as the authorita
 20. Repeat warning/contact/return checks for all three wolves. Each wolf should activate from its own yellow/orange area.
 21. Defeat wolves with `Space`. The terminal prints `Forest Crisis Predator Defeat progress: N/2 after wolf-X` via stdout and the logger. Two relevant wolf defeats make the combat outcome ready internally, but no final outcome or slice completion should trigger in this increment.
 
+## Recovery And Resources
+
+1. On startup, confirm the chat reports `3 bandages and 2 food`.
+2. Let a Wolf damage the Player and confirm the HP panel drops.
+3. Press `B`. HP should immediately rise by 35, clamped to maximum health, and one Bandage is consumed internally.
+4. Press `F`. Food recovery should start and HP should rise gradually over about 10 seconds for 30 total healing.
+5. Press `F` again while Food recovery is active. The game should report that Food recovery is already active and should not consume another Food.
+6. Let a Wolf reduce the Player to zero health.
+7. Confirm the same Player recovers immediately at the green Safe Place with 50% of maximum health.
+8. Confirm Defeat cost feedback: one Bandage is removed if available; otherwise one Food is removed; otherwise no resource loss occurs.
+9. Confirm Wolf contact stops after recovery at the Safe Place.
+10. Confirm movement, collision, interaction, and attacks still work after recovery.
+11. Confirm Shepherd and Predator Trail interactions still work and their state persists after Defeat.
+12. Confirm Predator Defeat progress and other Forest Crisis state persist after Defeat.
+13. Stand at the green Safe Place and press `E` to claim the emergency cache. It should grant exactly 1 Bandage and 1 Food.
+14. Press `E` at the cache again. It should report that the cache is empty.
+15. Confirm Defeat recovery does not automatically claim the emergency cache.
+16. Confirm no inventory HUD, hunger system, shop, crafting, or permanent resource counter was introduced.
+
 ## Out Of Scope For This Playtest
 
-- Healing, food, defeat recovery, XP, level-up, Elder dialogue, Logger dialogue, Balance actions, or crisis completion.
+- XP, level-up, Elder dialogue, Logger dialogue, Balance actions, or crisis completion.
 - Journal, checklist, counter, objective marker, or production artwork.

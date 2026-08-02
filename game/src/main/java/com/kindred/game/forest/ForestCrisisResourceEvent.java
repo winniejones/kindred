@@ -1,0 +1,16 @@
+package com.kindred.game.forest;
+
+public enum ForestCrisisResourceEvent {
+    NONE,
+    BANDAGE_USED,
+    FOOD_STARTED,
+    FOOD_ALREADY_ACTIVE,
+    NO_BANDAGES,
+    NO_FOOD,
+    DEFEAT_RECOVERED,
+    DEFEAT_COST_BANDAGE,
+    DEFEAT_COST_FOOD,
+    DEFEAT_COST_NONE,
+    EMERGENCY_CACHE_CLAIMED,
+    EMERGENCY_CACHE_EXHAUSTED
+}

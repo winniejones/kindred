@@ -81,6 +81,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     private final ForestCrisisGreybox forestCrisisGreybox;
     private final ForestCrisisIntroductionPath forestCrisisIntroductionPath;
     private final ForestCrisisWolfEncounter forestCrisisWolfEncounter;
+    private final ForestCrisisRecoveryResources forestCrisisRecoveryResources;
+    private final ForestCrisisResourceInput forestCrisisResourceInput;
     private final Map<String, Integer> wolfEntityIds = new HashMap<>();
     private final Set<String> recordedWolfDefeats = new HashSet<>();
 
@@ -88,6 +90,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     // Entity IDs
     private int playerEntity = -1;
     private int cameraEntity;
+    private boolean forestCrisisRecoveredPlayerThisFrame;
+    private PlayerRecoveryEssentials latestPlayerRecoveryEssentials = PlayerRecoveryEssentials.defaultPlayer();
 
     /**
      * GameMain Constructor: Initializes the game window, loads assets,
@@ -148,6 +152,8 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         forestCrisisGreybox = ForestCrisisGreybox.createDefault(forestCrisisState);
         forestCrisisIntroductionPath = ForestCrisisIntroductionPath.createDefault(forestCrisisState);
         forestCrisisWolfEncounter = ForestCrisisWolfEncounter.createDefault(forestCrisisGreybox, forestCrisisState);
+        forestCrisisRecoveryResources = ForestCrisisRecoveryResources.createDefault();
+        forestCrisisResourceInput = new ForestCrisisResourceInput();
         log.info("Systems and UIManager initialized.");
 
         // --- Initial Entity Spawning ---
@@ -176,6 +182,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         createForestCrisisGreyboxMarkers();
         showIntroductionMoment(forestCrisisIntroductionPath.safeMoment());
         showIntroductionMoment(forestCrisisIntroductionPath.interactionHint());
+        gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_STARTING_RESOURCES));
         log.info("GameMain initialization complete.");
     }
 
@@ -483,6 +490,7 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
      * @param deltaTime Time elapsed since the last update in seconds.
      */
     private void update(float deltaTime) {
+        forestCrisisRecoveredPlayerThisFrame = false;
         keyboard.update();
 
         // --- Update Systems in Order ---
@@ -490,10 +498,13 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
         aiSystem.update(deltaTime); // AI now handles attacks
         updateForestCrisisWolves();
         interactionSystem.update(deltaTime);
+        rememberPlayerRecoveryEssentials();
         combatSystem.update(deltaTime);
+        recoverPlayerFromForestCrisisDefeat();
         recordForestCrisisWolfDefeats();
         experienceSystem.update(deltaTime);
         statCalculationSystem.update(deltaTime);
+        updateForestCrisisFoodRecovery(deltaTime);
         particlePhysicsSystem.update(deltaTime);
         collisionSystem.update(deltaTime);
         movementSystem.update(deltaTime);
@@ -575,7 +586,22 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
     }
 
     private void interactWithForestCrisisGreybox() {
+        if (tryInteractWithForestCrisisEmergencyCache()) {
+            return;
+        }
         forestCrisisGreybox.interactAt(currentPlayerPoint()).ifPresent(this::showIntroductionMoment);
+    }
+
+    private boolean tryInteractWithForestCrisisEmergencyCache() {
+        if (!isCurrentPlayerWithinRange(forestCrisisGreybox.safePlaceCenter())) {
+            return false;
+        }
+        showForestCrisisResourceUse(forestCrisisRecoveryResources.claimEmergencyCache());
+        return true;
+    }
+
+    private boolean isCurrentPlayerWithinRange(GreyboxPoint point) {
+        return currentPlayerPoint().distanceSquaredTo(point) <= ForestCrisisGreybox.INTERACTION_RANGE * ForestCrisisGreybox.INTERACTION_RANGE;
     }
 
     private void showIntroductionMoment(IntroductionMoment moment) {
@@ -699,6 +725,84 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             WolfEncounterUpdate update = forestCrisisWolfEncounter.recordDefeat(wolf.getKey());
             update.developmentLogMessage().ifPresent(this::emitForestCrisisDevelopmentLog);
             showWolfEncounterMoment(update.event());
+        }
+    }
+
+    private void recoverPlayerFromForestCrisisDefeat() {
+        HealthComponent health = entityManager.getComponent(playerEntity, HealthComponent.class);
+        if (health == null || (health.currentHealth > 0 && !entityManager.hasComponent(playerEntity, DeadComponent.class))) {
+            return;
+        }
+        ForestCrisisDefeatRecovery recovery = forestCrisisRecoveryResources.recoverDefeatedPlayer(
+                entityManager,
+                playerEntity,
+                forestCrisisGreybox,
+                latestPlayerRecoveryEssentials);
+        if (recovery.event() == ForestCrisisResourceEvent.DEFEAT_RECOVERED) {
+            forestCrisisRecoveredPlayerThisFrame = true;
+            gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_DEFEAT_RECOVERED));
+            showForestCrisisResourceEvent(recovery.costEvent());
+            WolfEncounterUpdate update = forestCrisisWolfEncounter.update(currentPlayerPoint());
+            showWolfEncounterMoment(update.event());
+        }
+    }
+
+    private void rememberPlayerRecoveryEssentials() {
+        ColliderComponent collider = entityManager.getComponent(playerEntity, ColliderComponent.class);
+        AttackComponent attack = entityManager.getComponent(playerEntity, AttackComponent.class);
+        if (collider != null && attack != null && !entityManager.hasComponent(playerEntity, DeadComponent.class)) {
+            latestPlayerRecoveryEssentials = PlayerRecoveryEssentials.from(collider, attack);
+        }
+    }
+
+    private void updateForestCrisisFoodRecovery(float deltaTime) {
+        if (forestCrisisRecoveredPlayerThisFrame) {
+            return;
+        }
+        HealthComponent health = entityManager.getComponent(playerEntity, HealthComponent.class);
+        if (health != null && !entityManager.hasComponent(playerEntity, DeadComponent.class)) {
+            forestCrisisRecoveryResources.update(deltaTime, health);
+        }
+    }
+
+    private void useForestCrisisBandage() {
+        if (entityManager.hasComponent(playerEntity, DeadComponent.class)) {
+            return;
+        }
+        HealthComponent health = entityManager.getComponent(playerEntity, HealthComponent.class);
+        if (health != null) {
+            showForestCrisisResourceUse(forestCrisisRecoveryResources.useBandage(health));
+        }
+    }
+
+    private void useForestCrisisFood() {
+        if (entityManager.hasComponent(playerEntity, DeadComponent.class)) {
+            return;
+        }
+        HealthComponent health = entityManager.getComponent(playerEntity, HealthComponent.class);
+        if (health != null) {
+            showForestCrisisResourceUse(forestCrisisRecoveryResources.useFood(health));
+        }
+    }
+
+    private void showForestCrisisResourceUse(ForestCrisisResourceUse use) {
+        showForestCrisisResourceEvent(use.event());
+    }
+
+    private void showForestCrisisResourceEvent(ForestCrisisResourceEvent event) {
+        switch (event) {
+            case BANDAGE_USED -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_BANDAGE_USED));
+            case FOOD_STARTED -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_FOOD_STARTED));
+            case NO_BANDAGES -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_NO_BANDAGES));
+            case NO_FOOD -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_NO_FOOD));
+            case FOOD_ALREADY_ACTIVE -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_FOOD_ALREADY_ACTIVE));
+            case DEFEAT_COST_BANDAGE -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_DEFEAT_COST_BANDAGE));
+            case DEFEAT_COST_FOOD -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_DEFEAT_COST_FOOD));
+            case DEFEAT_COST_NONE -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_DEFEAT_COST_NONE));
+            case EMERGENCY_CACHE_CLAIMED -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_EMERGENCY_CACHE_CLAIMED));
+            case EMERGENCY_CACHE_EXHAUSTED -> gameUILayout.addChatLine(PLAYER_TEXT.resolve(PlayerTextKey.RECOVERY_EMERGENCY_CACHE_EXHAUSTED));
+            case DEFEAT_RECOVERED, NONE -> {
+            }
         }
     }
 
@@ -864,6 +968,17 @@ public class GameMain extends Canvas implements Runnable, MouseMotionListener {
             }
             else if (keyCode == KeyEvent.VK_E && gameUILayout != null && !gameUILayout.isChatInputFocused()) {
                 interactWithForestCrisisGreybox();
+            }
+            else if (gameUILayout != null) {
+                ForestCrisisResourceAction resourceAction = forestCrisisResourceInput.actionFor(
+                        keyCode,
+                        gameUILayout.isChatInputFocused(),
+                        entityManager.hasComponent(playerEntity, DeadComponent.class));
+                if (resourceAction == ForestCrisisResourceAction.USE_BANDAGE) {
+                    useForestCrisisBandage();
+                } else if (resourceAction == ForestCrisisResourceAction.USE_FOOD) {
+                    useForestCrisisFood();
+                }
             }
 
             // --- Pass key press to focused UI element (Chat) ---
